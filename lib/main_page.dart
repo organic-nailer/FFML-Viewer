@@ -3,7 +3,9 @@ import 'dart:typed_data';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_gl/flutter_gl.dart';
+import 'package:flutter_pcd/pcd_view.dart';
 // import 'package:vector_math/vector_math.dart' hide Colors;
 
 class MainPage extends StatefulWidget {
@@ -13,25 +15,35 @@ class MainPage extends StatefulWidget {
   State<MainPage> createState() => _MainPageState();
 }
 
-class _MainPageState extends State<MainPage> {
-  late FlutterGlPlugin _flutterGlPlugin;
-  late dynamic _glProgram;
-  late Future<void> _glFuture;
+class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin {
+  Size _canvasSize = const Size(500, 500);
+  late Ticker _ticker;
+  final ColorTween _colorTween = ColorTween(begin: Colors.red, end: Colors.blue);
+  Color _color = Colors.red;
+  Matrix4 _transform = Matrix4.identity();
+  final Float32Array _vertices = genCube(21);
 
   @override
   void initState() {
     super.initState();
-    _glFuture = setupGL();
+    _ticker = createTicker(onTick)..start();
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
+  }
 
-    Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      final randomColor = Color((math.Random().nextDouble() * 0xFFFFFF).toInt()).withOpacity(1.0);
-      final phaseRad = (timer.tick * 0.03 * math.pi) % (2 * math.pi);
-      render(_flutterGlPlugin.gl, _glProgram, randomColor, phaseRad);
+  void onTick(Duration duration) {
+    const phaseLengthMs = 10000;
+    final phase = (duration.inMilliseconds % phaseLengthMs) / phaseLengthMs;
+    final phaseRad = phase * 2 * math.pi;
+    setState(() {
+      _color = _colorTween.transform(phase)!;
+      _transform = Matrix4.identity()
+        ..rotateX(10 * math.pi / 180)
+        ..rotateY(phaseRad);
     });
   }
 
@@ -39,137 +51,36 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
       return Scaffold(
         body: Center(
-          child: FutureBuilder(
-            future: _glFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.done) {
-                return Container(
-                  width: 300,
-                  height: 300,
-                  color: Colors.yellowAccent,
-                  child: HtmlElementView(
-                    viewType: _flutterGlPlugin.textureId!.toString(),
-                  )
-                );
-              } else {
-                return const CircularProgressIndicator();
-              }
-            },
+          child: PcdView(
+            canvasSize: _canvasSize, 
+            vertices: _vertices, 
+            transform: _transform,
           )
         ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            final randomColor = Color((math.Random().nextDouble() * 0xFFFFFF).toInt()).withOpacity(1.0);
-            render(_flutterGlPlugin.gl, _glProgram, randomColor, 0);
-          },
-          tooltip: 'Increment',
-          child: const Icon(Icons.add),
-        ),
+        // floatingActionButton: FloatingActionButton(
+        //   onPressed: () {
+        //     final randomColor = Color((math.Random().nextDouble() * 0xFFFFFF).toInt()).withOpacity(1.0);
+        //     render(_flutterGlPlugin.gl, _canvasSize, _glProgram, randomColor, 0);
+        //   },
+        //   tooltip: 'Increment',
+        //   child: const Icon(Icons.add),
+        // ),
       );
   }
-
-  Future<void> setupGL() async {
-    _flutterGlPlugin = FlutterGlPlugin();
-    await _flutterGlPlugin.initialize(options: {
-      "antialias": true,
-      "alpha": true,
-      "width": 300,
-      "height": 300,
-      "dpr": 1.0,
-    });
-    final gl = _flutterGlPlugin.gl;
-    _glProgram = initGL(gl);
-  }
 }
 
-dynamic initGL(dynamic gl) {
-  const vertexShaderSource = """#version 300 es
-#define attribute in
-#define varying out
-attribute vec3 a_Position;
-uniform mat4 transform;
-void main() {
-  gl_Position = transform * vec4(a_Position, 1.0);
-}
-""";
-  const fragmentShaderSource = """#version 300 es
-out highp vec4 pc_fragColor;
-#define gl_FragColor pc_fragColor
-
-void main() {
-  gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
-}
-""";
-  
-  final vertexShader = gl.createShader(gl.VERTEX_SHADER);
-  gl.shaderSource(vertexShader, vertexShaderSource);
-  gl.compileShader(vertexShader);
-
-  var _res = gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS);
-  if (_res == 0 || _res == false) {
-    print("Error compiling shader: ${gl.getShaderInfoLog(vertexShader)}");
-    return;
+Float32Array genCube(int sidePts) {
+  final result = Float32Array(sidePts * sidePts * sidePts * 3);
+  for (var x = 0; x < sidePts; x++) {
+    for (var y = 0; y < sidePts; y++) {
+      for (var z = 0; z < sidePts; z++) {
+        final index = x * sidePts * sidePts + y * sidePts + z;
+        result[index * 3 + 0] = x / (sidePts - 1) - 0.5;
+        result[index * 3 + 1] = y / (sidePts - 1) - 0.5;
+        result[index * 3 + 2] = z / (sidePts - 1) - 0.5;
+      }
+    }
   }
-
-  final fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-  gl.shaderSource(fragmentShader, fragmentShaderSource);
-  gl.compileShader(fragmentShader);
-
-  _res = gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS);
-  if (_res == 0 || _res == false) {
-    print("Error compiling shader: ${gl.getShaderInfoLog(fragmentShader)}");
-    return;
-  }
-  
-  final glProgram = gl.createProgram();
-  gl.attachShader(glProgram, vertexShader);
-  gl.attachShader(glProgram, fragmentShader);
-  gl.linkProgram(glProgram);
-
-  _res = gl.getProgramParameter(glProgram, gl.LINK_STATUS);
-  print(" initShaders LINK_STATUS _res: ${_res} ");
-  if (_res == false || _res == 0) {
-    print("Unable to initialize the shader program");
-  }
-
-  gl.useProgram(glProgram);
-
-  final vertices = Float32Array.fromList([
-    -0.5, -0.5, 0,
-    0.5, -0.5, 0,
-    0, 0.5, 0,
-  ]);
-
-  final vao = gl.createVertexArray();
-  gl.bindVertexArray(vao);
-
-  final vertexBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, vertices.length, vertices, gl.STATIC_DRAW);
-
-  final aPosition = gl.getAttribLocation(glProgram, 'a_Position');
-  gl.enableVertexAttribArray(aPosition);
-  gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, Float32List.bytesPerElement * 3, 0);
-
-  return glProgram;
-}
-
-void render(dynamic gl, dynamic glProgram, Color color, double phaseRad) {
-  // set transform
-  final transform = gl.getUniformLocation(glProgram, 'transform');
-  // final matrix = Float32Array.fromList([
-  //   1, 0, 0, 0.5,
-  //   0, 1, 0, 0, 
-  //   0, 0, 1, 0,
-  //   0, 0, 0, 1,
-  // ]);
-  var matrix = Matrix4.rotationZ(phaseRad).storage;
-  gl.uniformMatrix4fv(transform, false, matrix);
-
-  gl.viewport(0, 0, 300, 300);
-  gl.clearColor(color.red / 255, color.green / 255, color.blue / 255, 1);
-  gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
-
-  gl.finish();
+  print("done");
+  return result;
 }
