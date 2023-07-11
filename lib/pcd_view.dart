@@ -1,16 +1,20 @@
 import 'dart:typed_data';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_gl/flutter_gl.dart';
+import 'package:vector_math/vector_math_64.dart' show Vector3, Vector4;
 
 class PcdView extends StatefulWidget {
   final Size canvasSize;
   final Matrix4 transform;
   final Float32Array vertices;
+  final Float32Array colors;
   const PcdView(
       {Key? key,
       required this.canvasSize,
       required this.vertices,
+      required this.colors,
       required this.transform})
       : super(key: key);
 
@@ -22,6 +26,18 @@ class _PcdViewState extends State<PcdView> {
   late FlutterGlPlugin _flutterGlPlugin;
   late dynamic _glProgram;
   late Future<void> _glFuture;
+  final Matrix4 _viewingTransform = getViewingTransform(
+    Vector3(0, 0, 3),
+    Vector3(0, 0, 0),
+    Vector3(0, 1, 0),
+  );
+  final Matrix4 _projectiveTransform = getProjectiveTransform(
+    30 * math.pi / 180,
+    1,
+    -1,
+    -10,
+  );
+  final Matrix4 interactiveTransform = Matrix4.identity();
 
   @override
   void initState() {
@@ -63,7 +79,7 @@ class _PcdViewState extends State<PcdView> {
       "dpr": 1.0,
     });
     final gl = _flutterGlPlugin.gl;
-    _glProgram = initGL(gl, widget.vertices);
+    _glProgram = initGL(gl, widget.vertices, widget.colors);
   }
 
   void render() {
@@ -79,7 +95,14 @@ class _PcdViewState extends State<PcdView> {
     //   0, 0, 1, 0,
     //   0, 0, 0, 1,
     // ]);
-    gl.uniformMatrix4fv(transformLoc, false, widget.transform.storage);
+    final transform = _projectiveTransform
+      * _viewingTransform
+      * interactiveTransform;
+    // final samplePoint = Vector4(1, 0, 0, 1);
+    // final transformedPoint = transform * samplePoint;
+    // print("transformedPoint: ${transformedPoint.storage}");
+    // final transform = _viewingTransform;
+    gl.uniformMatrix4fv(transformLoc, false, transform.storage);
 
     gl.viewport(0, 0, size.width, size.height);
     gl.clearColor(color.red / 255, color.green / 255, color.blue / 255, 1);
@@ -91,23 +114,30 @@ class _PcdViewState extends State<PcdView> {
   }
 }
 
-dynamic initGL(dynamic gl, Float32Array vertices) {
+dynamic initGL(dynamic gl, Float32Array vertices, Float32Array colors) {
   const vertexShaderSource = """#version 300 es
 #define attribute in
 #define varying out
 attribute vec3 a_Position;
+attribute vec3 a_Color;
 uniform mat4 transform;
+varying vec3 v_Color;
 void main() {
   gl_Position = transform * vec4(a_Position, 1.0);
-  gl_PointSize = 1.0;
+  gl_PointSize = 5.0;
+  v_Color = a_Color;
 }
 """;
   const fragmentShaderSource = """#version 300 es
 out highp vec4 pc_fragColor;
 #define gl_FragColor pc_fragColor
+#define varying in
+
+precision highp float;
+varying vec3 v_Color;
 
 void main() {
-  gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+  gl_FragColor = vec4(v_Color, 1.0);
 }
 """;
 
@@ -144,21 +174,6 @@ void main() {
 
   gl.useProgram(glProgram);
 
-  // final vertices = Float32Array.fromList([
-  //   -0.5,
-  //   -0.5,
-  //   0,
-  //   0.5,
-  //   -0.5,
-  //   0,
-  //   0,
-  //   0.5,
-  //   0,
-  //   0,
-  //   0,
-  //   0,
-  // ]);
-
   final vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
 
@@ -171,5 +186,46 @@ void main() {
   gl.vertexAttribPointer(
       aPosition, 3, gl.FLOAT, false, Float32List.bytesPerElement * 3, 0);
 
+  final colorBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, colors.length, colors, gl.STATIC_DRAW);
+
+  final aColor = gl.getAttribLocation(glProgram, 'a_Color');
+  gl.enableVertexAttribArray(aColor);
+  gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, Float32List.bytesPerElement * 3, 0);
+
   return glProgram;
+}
+
+/// LookAt方式のビュー変換行列を返す
+Matrix4 getViewingTransform(Vector3 cameraPosition, Vector3 lookAt, Vector3 up) {
+  final zAxis = (cameraPosition - lookAt).normalized();
+  final xAxis = up.cross(zAxis).normalized();
+  final yAxis = zAxis.cross(xAxis).normalized();
+  final translation = Matrix4.identity();
+  translation.setTranslation(cameraPosition);
+  final rotation = Matrix4.identity();
+  rotation.setRow(0, Vector4(xAxis.x, yAxis.x, zAxis.x, 0));
+  rotation.setRow(1, Vector4(xAxis.y, yAxis.y, zAxis.y, 0));
+  rotation.setRow(2, Vector4(xAxis.z, yAxis.z, zAxis.z, 0));
+  return rotation * translation;
+}
+
+Matrix4 getProjectiveTransform(double fovY, double aspect, double near, double far) {
+  final f = 1 / math.tan(fovY / 2);
+  final z = (far + near) / (near - far);
+  final w = 2 * far * near / (near - far);
+  print("f: ${f}, z: ${z}, w: ${w}");
+  return Matrix4(
+    f / aspect, 0, 0, 0,
+    0, f, 0, 0,
+    0, 0, z, w,
+    0, 0, -1, 0,
+  );
+  // return Matrix4(
+  //   1, 0, 0, 0,
+  //   0, 1, 0, 0,
+  //   0, 0, 1, 0,
+  //   0, 0, -1, 1,
+  // );
 }

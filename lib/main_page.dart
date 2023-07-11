@@ -21,12 +21,16 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
   final ColorTween _colorTween = ColorTween(begin: Colors.red, end: Colors.blue);
   Color _color = Colors.red;
   Matrix4 _transform = Matrix4.identity();
-  final Float32Array _vertices = genCube(21);
+  late Float32Array _vertices;
+  late Float32Array _colors;
 
   @override
   void initState() {
     super.initState();
     _ticker = createTicker(onTick)..start();
+    final cube = genCube(21);
+    _vertices = cube.$1;
+    _colors = cube.$2;
   }
 
   @override
@@ -35,7 +39,14 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
     super.dispose();
   }
 
+  Duration past = Duration.zero;
   void onTick(Duration duration) {
+    if ((duration - past).inSeconds >= 5) {
+      past = duration;
+    }
+    else {
+      return;
+    }
     const phaseLengthMs = 10000;
     final phase = (duration.inMilliseconds % phaseLengthMs) / phaseLengthMs;
     final phaseRad = phase * 2 * math.pi;
@@ -54,6 +65,7 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
           child: PcdView(
             canvasSize: _canvasSize, 
             vertices: _vertices, 
+            colors: _colors,
             transform: _transform,
           )
         ),
@@ -69,18 +81,31 @@ class _MainPageState extends State<MainPage> with SingleTickerProviderStateMixin
   }
 }
 
-Float32Array genCube(int sidePts) {
-  final result = Float32Array(sidePts * sidePts * sidePts * 3);
+(Float32Array, Float32Array) genCube(int sidePts) {
+  // x y z
+  final resultXYZ = Float32Array(sidePts * sidePts * sidePts * 3);
   for (var x = 0; x < sidePts; x++) {
     for (var y = 0; y < sidePts; y++) {
       for (var z = 0; z < sidePts; z++) {
         final index = x * sidePts * sidePts + y * sidePts + z;
-        result[index * 3 + 0] = x / (sidePts - 1) - 0.5;
-        result[index * 3 + 1] = y / (sidePts - 1) - 0.5;
-        result[index * 3 + 2] = z / (sidePts - 1) - 0.5;
+        resultXYZ[index * 3 + 0] = x / (sidePts - 1) - 0.5;
+        resultXYZ[index * 3 + 1] = y / (sidePts - 1) - 0.5;
+        resultXYZ[index * 3 + 2] = z / (sidePts - 1) - 0.5;
+      }
+    }
+  }
+  // r g b
+  final resultRGB = Float32Array(sidePts * sidePts * sidePts * 3);
+  for (var x = 0; x < sidePts; x++) {
+    for (var y = 0; y < sidePts; y++) {
+      for (var z = 0; z < sidePts; z++) {
+        final index = x * sidePts * sidePts + y * sidePts + z;
+        resultRGB[index * 3 + 0] = x / (sidePts - 1);
+        resultRGB[index * 3 + 1] = y / (sidePts - 1);
+        resultRGB[index * 3 + 2] = z / (sidePts - 1);
       }
     }
   }
   print("done");
-  return result;
+  return (resultXYZ, resultRGB);
 }
