@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'dart:math' as math;
+import 'dart:html' as html;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_gl/flutter_gl.dart';
@@ -7,15 +8,13 @@ import 'package:vector_math/vector_math_64.dart' show Vector3, Vector4;
 
 class PcdView extends StatefulWidget {
   final Size canvasSize;
-  final Matrix4 transform;
   final Float32Array vertices;
   final Float32Array colors;
   const PcdView(
       {Key? key,
       required this.canvasSize,
       required this.vertices,
-      required this.colors,
-      required this.transform})
+      required this.colors})
       : super(key: key);
 
   @override
@@ -31,13 +30,8 @@ class _PcdViewState extends State<PcdView> {
     Vector3(0, 0, 0),
     Vector3(0, 1, 0),
   );
-  final Matrix4 _projectiveTransform = getProjectiveTransform(
-    30 * math.pi / 180,
-    1,
-    -1,
-    -10,
-  );
-  final Matrix4 interactiveTransform = Matrix4.identity();
+  late Matrix4 _projectiveTransform;
+  Matrix4 interactiveTransform = Matrix4.identity();
 
   @override
   void initState() {
@@ -47,17 +41,37 @@ class _PcdViewState extends State<PcdView> {
 
   @override
   Widget build(BuildContext context) {
+    _projectiveTransform = getProjectiveTransform(
+      30 * math.pi / 180,
+      widget.canvasSize.width / widget.canvasSize.height,
+      -1,
+      -10,
+    );
     return FutureBuilder(
       future: _glFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
           render();
-          return Container(
-            width: widget.canvasSize.width,
-            height: widget.canvasSize.height,
-            color: Colors.yellowAccent,
-            child: HtmlElementView(
-              viewType: _flutterGlPlugin.textureId!.toString(),
+          return Listener(
+            onPointerMove: (event) {
+              final move = event.delta;
+              final moveFactor = 90 / widget.canvasSize.height;
+              final moveThetaX = move.dx * moveFactor * math.pi / 180;
+              final moveThetaY = move.dy * moveFactor * math.pi / 180;
+              final moveTransform = Matrix4.identity()
+                ..rotateX(-moveThetaY)
+                ..rotateY(-moveThetaX);
+              setState(() {
+                interactiveTransform = moveTransform * interactiveTransform;
+              });
+            },
+            child: Container(
+              width: widget.canvasSize.width,
+              height: widget.canvasSize.height,
+              color: Colors.yellowAccent,
+              child: HtmlElementView(
+                viewType: _flutterGlPlugin.textureId!.toString(),
+              ),
             ),
           );
         } else {
@@ -89,20 +103,20 @@ class _PcdViewState extends State<PcdView> {
     final verticesLength = widget.vertices.length ~/ 3;
     // set transform
     final transformLoc = gl.getUniformLocation(_glProgram, 'transform');
-    // final matrix = Float32Array.fromList([
-    //   1, 0, 0, 0.5,
-    //   0, 1, 0, 0,
-    //   0, 0, 1, 0,
-    //   0, 0, 0, 1,
-    // ]);
     final transform = _projectiveTransform
       * _viewingTransform
       * interactiveTransform;
-    // final samplePoint = Vector4(1, 0, 0, 1);
-    // final transformedPoint = transform * samplePoint;
-    // print("transformedPoint: ${transformedPoint.storage}");
-    // final transform = _viewingTransform;
     gl.uniformMatrix4fv(transformLoc, false, transform.storage);
+
+    // workaround for web: HTMLのcanvasの属性(width, height)を変更しないと、
+    // WebGLの描画バッファの大きさが変わらないため、表示がおかしくなる
+    // 参考: https://maku77.github.io/js/canvas/size.html
+    final htmlCanvas = html.document.getElementById("canvas-id");
+    if (htmlCanvas != null) {
+      htmlCanvas as html.CanvasElement;
+      htmlCanvas.width = size.width.toInt();
+      htmlCanvas.height = size.height.toInt();
+    }
 
     gl.viewport(0, 0, size.width, size.height);
     gl.clearColor(color.red / 255, color.green / 255, color.blue / 255, 1);
@@ -215,17 +229,10 @@ Matrix4 getProjectiveTransform(double fovY, double aspect, double near, double f
   final f = 1 / math.tan(fovY / 2);
   final z = (far + near) / (near - far);
   final w = 2 * far * near / (near - far);
-  print("f: ${f}, z: ${z}, w: ${w}");
   return Matrix4(
     f / aspect, 0, 0, 0,
     0, f, 0, 0,
     0, 0, z, w,
     0, 0, -1, 0,
   );
-  // return Matrix4(
-  //   1, 0, 0, 0,
-  //   0, 1, 0, 0,
-  //   0, 0, 1, 0,
-  //   0, 0, -1, 1,
-  // );
 }
