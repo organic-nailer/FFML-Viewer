@@ -1,3 +1,5 @@
+import 'package:csv/csv.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gl/flutter_gl.dart';
 import 'package:flutter_pcd/pcd_view.dart';
@@ -34,6 +36,26 @@ class _MainPageState extends State<MainPage> {
             );
           }
         ),
+        floatingActionButton: FloatingActionButton(
+          child: Icon(Icons.file_upload),
+          onPressed: () async {
+            const typeGroup = XTypeGroup(
+              label: "point cloud",
+              extensions: ["csv"],
+            );
+            final file = await openFile(acceptedTypeGroups: [typeGroup]);
+            if (file == null) {
+              print("no file selected");
+              return;
+            }
+            final content = await file.readAsString();
+            final pointCloud = readVeloCsv(content);
+            setState(() {
+              _vertices = pointCloud.$1;
+              _colors = pointCloud.$2;
+            });
+          },
+        ),
       );
   }
 }
@@ -64,5 +86,24 @@ class _MainPageState extends State<MainPage> {
     }
   }
   print("done");
+  return (resultXYZ, resultRGB);
+}
+
+(Float32Array, Float32Array) readVeloCsv(String content) {
+  final table = const CsvToListConverter().convert(content);
+  final pointLen = table.length - 1;
+  final resultXYZ = Float32Array(pointLen * 3);
+  final resultRGB = Float32Array(pointLen * 3);
+  final colorTween = ColorTween(begin: Colors.red, end: Colors.green);
+  for (var i = 1; i < table.length; i++) {
+    final row = table[i];
+    resultXYZ[(i - 1) * 3 + 0] = row[7];
+    resultXYZ[(i - 1) * 3 + 1] = row[8];
+    resultXYZ[(i - 1) * 3 + 2] = row[9];
+    final color = colorTween.lerp(row[0] / 255)!;
+    resultRGB[(i - 1) * 3 + 0] = color.red / 255;
+    resultRGB[(i - 1) * 3 + 1] = color.green / 255;
+    resultRGB[(i - 1) * 3 + 2] = color.blue / 255;
+  }
   return (resultXYZ, resultRGB);
 }

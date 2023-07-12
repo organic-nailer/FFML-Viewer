@@ -37,16 +37,38 @@ class _PcdViewState extends State<PcdView> {
   void initState() {
     super.initState();
     _glFuture = setupGL();
-  }
-
-  @override
-  Widget build(BuildContext context) {
     _projectiveTransform = getProjectiveTransform(
       30 * math.pi / 180,
       widget.canvasSize.width / widget.canvasSize.height,
       -1,
       -10,
     );
+  }
+
+  @override
+  void dispose() {
+    _flutterGlPlugin.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant PcdView oldWidget) {
+    if (oldWidget.vertices != widget.vertices) {
+      updateVertices(widget.vertices, widget.colors);
+    }
+    if (oldWidget.canvasSize != widget.canvasSize) {
+      _projectiveTransform = getProjectiveTransform(
+        30 * math.pi / 180,
+        widget.canvasSize.width / widget.canvasSize.height,
+        -1,
+        -10,
+      );
+    }
+    super.didUpdateWidget(oldWidget);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return FutureBuilder(
       future: _glFuture,
       builder: (context, snapshot) {
@@ -59,8 +81,8 @@ class _PcdViewState extends State<PcdView> {
               final moveThetaX = move.dx * moveFactor * math.pi / 180;
               final moveThetaY = move.dy * moveFactor * math.pi / 180;
               final moveTransform = Matrix4.identity()
-                ..rotateX(-moveThetaY)
-                ..rotateY(-moveThetaX);
+                ..rotateX(moveThetaY)
+                ..rotateY(moveThetaX);
               setState(() {
                 interactiveTransform = moveTransform * interactiveTransform;
               });
@@ -125,6 +147,26 @@ class _PcdViewState extends State<PcdView> {
     gl.drawArrays(gl.POINTS, 0, verticesLength);
 
     gl.finish();
+  }
+
+  void updateVertices(Float32Array vertices, Float32Array colors) {
+    final gl = _flutterGlPlugin.gl;
+    final vertexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices.length, vertices, gl.STATIC_DRAW);
+
+    final aPosition = gl.getAttribLocation(_glProgram, 'a_Position');
+    gl.enableVertexAttribArray(aPosition);
+    gl.vertexAttribPointer(
+        aPosition, 3, gl.FLOAT, false, Float32List.bytesPerElement * 3, 0);
+
+    final colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, colors.length, colors, gl.STATIC_DRAW);
+
+    final aColor = gl.getAttribLocation(_glProgram, 'a_Color');
+    gl.enableVertexAttribArray(aColor);
+    gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, Float32List.bytesPerElement * 3, 0);
   }
 }
 
@@ -213,11 +255,11 @@ void main() {
 
 /// LookAt方式のビュー変換行列を返す
 Matrix4 getViewingTransform(Vector3 cameraPosition, Vector3 lookAt, Vector3 up) {
-  final zAxis = (cameraPosition - lookAt).normalized();
-  final xAxis = up.cross(zAxis).normalized();
-  final yAxis = zAxis.cross(xAxis).normalized();
+  final zAxis = -(cameraPosition - lookAt).normalized();
+  final xAxis = -up.cross(zAxis).normalized();
+  final yAxis = -zAxis.cross(xAxis).normalized();
   final translation = Matrix4.identity();
-  translation.setTranslation(cameraPosition);
+  translation.setTranslation(-cameraPosition);
   final rotation = Matrix4.identity();
   rotation.setRow(0, Vector4(xAxis.x, yAxis.x, zAxis.x, 0));
   rotation.setRow(1, Vector4(xAxis.y, yAxis.y, zAxis.y, 0));

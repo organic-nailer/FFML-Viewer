@@ -12,6 +12,8 @@ dependencies:
   cupertino_icons: ^1.0.2
   vector_math: ^2.1.4
   flutter_gl: ^0.0.21
+  file_selector: ^1.0.0
+  csv: ^5.0.2
 
 dev_dependencies:
   flutter_test:
