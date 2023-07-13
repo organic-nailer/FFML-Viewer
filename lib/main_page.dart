@@ -94,7 +94,7 @@ class _MainPageState extends State<MainPage> {
   final pointLen = table.length - 1;
   final resultXYZ = Float32Array(pointLen * 3);
   final resultRGB = Float32Array(pointLen * 3);
-  final colorTween = ColorTween(begin: Colors.red, end: Colors.green);
+  final colorTween = ColorTween(begin: Colors.blue, end: Colors.red);
   for (var i = 1; i < table.length; i++) {
     final row = table[i];
     resultXYZ[(i - 1) * 3 + 0] = row[7];

@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'dart:math' as math;
 import 'dart:html' as html;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gl/flutter_gl.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3, Vector4;
@@ -75,24 +76,74 @@ class _PcdViewState extends State<PcdView> {
         if (snapshot.connectionState == ConnectionState.done) {
           render();
           return Listener(
-            onPointerMove: (event) {
-              final move = event.delta;
-              final moveFactor = 90 / widget.canvasSize.height;
-              final moveThetaX = move.dx * moveFactor * math.pi / 180;
-              final moveThetaY = move.dy * moveFactor * math.pi / 180;
-              final moveTransform = Matrix4.identity()
-                ..rotateX(moveThetaY)
-                ..rotateY(moveThetaX);
-              setState(() {
-                interactiveTransform = moveTransform * interactiveTransform;
-              });
+            onPointerSignal: (signal) {
+              if (signal is PointerScrollEvent) {
+                // マウスホイールのスクロール
+                // タッチパッドの2本指スクロール
+                final zoom = signal.scrollDelta.dy;
+                const zoomFactor = 0.001;
+                final zoomTransform = Matrix4.identity()
+                  ..scale(zoom * zoomFactor + 1);
+                setState(() {
+                  interactiveTransform = zoomTransform * interactiveTransform;
+                });
+              }
+              else if(signal is PointerScaleEvent) {
+                // タッチパッドの2本指ピンチ
+                final zoom = signal.scale;
+                const zoomFactor = 1;
+                final zoomTransform = Matrix4.identity()
+                  ..scale((zoom - 1) * zoomFactor + 1);
+                setState(() {
+                  interactiveTransform = zoomTransform * interactiveTransform;
+                });
+              }
             },
-            child: Container(
-              width: widget.canvasSize.width,
-              height: widget.canvasSize.height,
-              color: Colors.yellowAccent,
-              child: HtmlElementView(
-                viewType: _flutterGlPlugin.textureId!.toString(),
+            child: GestureDetector(
+              // onPanUpdate: (event) {
+              //   final move = event.delta;
+              //   final moveFactor = 90 / widget.canvasSize.height;
+              //   final moveThetaX = move.dx * moveFactor * math.pi / 180;
+              //   final moveThetaY = move.dy * moveFactor * math.pi / 180;
+              //   final moveTransform = Matrix4.identity()
+              //     ..rotateX(moveThetaY)
+              //     ..rotateY(moveThetaX);
+              //   setState(() {
+              //     interactiveTransform = moveTransform * interactiveTransform;
+              //   });
+              // },
+              onScaleUpdate: (details) {
+                if (details.pointerCount == 1) {
+                  // rotate
+                  final move = details.focalPointDelta;
+                  final moveFactor = 90 / widget.canvasSize.height;
+                  final moveThetaX = move.dx * moveFactor * math.pi / 180;
+                  final moveThetaY = move.dy * moveFactor * math.pi / 180;
+                  final moveTransform = Matrix4.identity()
+                    ..rotateX(moveThetaY)
+                    ..rotateY(moveThetaX);
+                  setState(() {
+                    interactiveTransform = moveTransform * interactiveTransform;
+                  });
+                }
+                else if (details.pointerCount == 2) {
+                  // zoom
+                  final zoom = details.scale;
+                  const zoomFactor = 0.01;
+                  final zoomTransform = Matrix4.identity()
+                    ..scale((zoom - 1) * zoomFactor + 1);
+                  setState(() {
+                    interactiveTransform = zoomTransform * interactiveTransform;
+                  });
+                }
+              },
+              child: Container(
+                width: widget.canvasSize.width,
+                height: widget.canvasSize.height,
+                color: Colors.yellowAccent,
+                child: HtmlElementView(
+                  viewType: _flutterGlPlugin.textureId!.toString(),
+                ),
               ),
             ),
           );
