@@ -32,7 +32,12 @@ class _PcdViewState extends State<PcdView> {
     Vector3(0, 1, 0),
   );
   late Matrix4 _projectiveTransform;
-  Matrix4 interactiveTransform = Matrix4.identity();
+
+  /// World Coordinate での原点中心の回転
+  Matrix4 rotOriginTransform = Matrix4.identity();
+
+  /// Camera Coordinate でのカメラの移動
+  Matrix4 cameraMoveTransform = Matrix4.identity();
 
   @override
   void initState() {
@@ -41,8 +46,8 @@ class _PcdViewState extends State<PcdView> {
     _projectiveTransform = getProjectiveTransform(
       30 * math.pi / 180,
       widget.canvasSize.width / widget.canvasSize.height,
-      -1,
-      -10,
+      -0.01,
+      -300,
     );
   }
 
@@ -82,36 +87,16 @@ class _PcdViewState extends State<PcdView> {
                 // タッチパッドの2本指スクロール
                 final zoom = signal.scrollDelta.dy;
                 const zoomFactor = 0.001;
-                final zoomTransform = Matrix4.identity()
-                  ..scale(zoom * zoomFactor + 1);
-                setState(() {
-                  interactiveTransform = zoomTransform * interactiveTransform;
-                });
+                viewZoom(zoom * zoomFactor, signal.position.dx, signal.position.dy);
               }
               else if(signal is PointerScaleEvent) {
                 // タッチパッドの2本指ピンチ
                 final zoom = signal.scale;
                 const zoomFactor = 1;
-                final zoomTransform = Matrix4.identity()
-                  ..scale((zoom - 1) * zoomFactor + 1);
-                setState(() {
-                  interactiveTransform = zoomTransform * interactiveTransform;
-                });
+                viewZoom((zoom - 1) * zoomFactor, signal.position.dx, signal.position.dy);
               }
             },
             child: GestureDetector(
-              // onPanUpdate: (event) {
-              //   final move = event.delta;
-              //   final moveFactor = 90 / widget.canvasSize.height;
-              //   final moveThetaX = move.dx * moveFactor * math.pi / 180;
-              //   final moveThetaY = move.dy * moveFactor * math.pi / 180;
-              //   final moveTransform = Matrix4.identity()
-              //     ..rotateX(moveThetaY)
-              //     ..rotateY(moveThetaX);
-              //   setState(() {
-              //     interactiveTransform = moveTransform * interactiveTransform;
-              //   });
-              // },
               onScaleUpdate: (details) {
                 if (details.pointerCount == 1) {
                   // rotate
@@ -123,18 +108,14 @@ class _PcdViewState extends State<PcdView> {
                     ..rotateX(moveThetaY)
                     ..rotateY(moveThetaX);
                   setState(() {
-                    interactiveTransform = moveTransform * interactiveTransform;
+                    rotOriginTransform = moveTransform * rotOriginTransform;
                   });
                 }
                 else if (details.pointerCount == 2) {
                   // zoom
                   final zoom = details.scale;
                   const zoomFactor = 0.01;
-                  final zoomTransform = Matrix4.identity()
-                    ..scale((zoom - 1) * zoomFactor + 1);
-                  setState(() {
-                    interactiveTransform = zoomTransform * interactiveTransform;
-                  });
+                  viewZoom((zoom - 1) * zoomFactor, details.focalPoint.dx, details.focalPoint.dy);
                 }
               },
               child: Container(
@@ -172,13 +153,14 @@ class _PcdViewState extends State<PcdView> {
   void render() {
     final gl = _flutterGlPlugin.gl;
     final size = widget.canvasSize;
-    final color = Colors.black;
+    const color = Colors.black;
     final verticesLength = widget.vertices.length ~/ 3;
     // set transform
     final transformLoc = gl.getUniformLocation(_glProgram, 'transform');
     final transform = _projectiveTransform
+      * cameraMoveTransform
       * _viewingTransform
-      * interactiveTransform;
+      * rotOriginTransform;
     gl.uniformMatrix4fv(transformLoc, false, transform.storage);
 
     // workaround for web: HTMLのcanvasの属性(width, height)を変更しないと、
@@ -218,6 +200,35 @@ class _PcdViewState extends State<PcdView> {
     final aColor = gl.getAttribLocation(_glProgram, 'a_Color');
     gl.enableVertexAttribArray(aColor);
     gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, Float32List.bytesPerElement * 3, 0);
+  }
+
+  void viewZoom(double zoomNormalized, double mousePosX, double mousePosY) {
+    print("zoomNormalized: ${zoomNormalized}");
+    // ズーム時のマウス位置の方向にカメラを移動させる
+    final mouseClipX = mousePosX / widget.canvasSize.width * 2 - 1;
+    final mouseClipY = -(mousePosY / widget.canvasSize.height * 2 - 1);
+    final invMat = Matrix4.inverted(_projectiveTransform);
+    Vector4 forwarding = invMat * Vector4(mouseClipX, mouseClipY, 0, 1);
+    forwarding = forwarding / forwarding.w;
+    Vector3 forwarding3 = forwarding.xyz.normalized();
+    
+    // カメラ位置が世界座標の原点を超えないよう移動量を制限する
+    final worldOrigin = (cameraMoveTransform
+      * _viewingTransform
+      * rotOriginTransform) * Vector4(0, 0, 0, 1);
+
+    print("forwarding: ${forwarding3}");
+    print("worldOrigin: ${worldOrigin}");
+    final d = forwarding3.dot(worldOrigin.xyz) / forwarding3.length;
+    print("d: ${d}");
+    final moveFactor = d * 0.5;
+
+    final translate = Matrix4.identity();
+    translate.setTranslation(-forwarding3 * zoomNormalized * moveFactor);
+
+    setState(() {
+      cameraMoveTransform = translate * cameraMoveTransform;
+    });
   }
 }
 
@@ -305,27 +316,30 @@ void main() {
 }
 
 /// LookAt方式のビュー変換行列を返す
+/// パラメータは世界座標系
 Matrix4 getViewingTransform(Vector3 cameraPosition, Vector3 lookAt, Vector3 up) {
-  final zAxis = -(cameraPosition - lookAt).normalized();
-  final xAxis = -up.cross(zAxis).normalized();
-  final yAxis = -zAxis.cross(xAxis).normalized();
+  final zAxis = (cameraPosition - lookAt).normalized();
+  final xAxis = up.cross(zAxis).normalized();
+  final yAxis = zAxis.cross(xAxis).normalized();
   final translation = Matrix4.identity();
   translation.setTranslation(-cameraPosition);
   final rotation = Matrix4.identity();
-  rotation.setRow(0, Vector4(xAxis.x, yAxis.x, zAxis.x, 0));
-  rotation.setRow(1, Vector4(xAxis.y, yAxis.y, zAxis.y, 0));
-  rotation.setRow(2, Vector4(xAxis.z, yAxis.z, zAxis.z, 0));
+  rotation.setRow(0, Vector4(xAxis.x, xAxis.y, xAxis.z, 0));
+  rotation.setRow(1, Vector4(yAxis.x, yAxis.y, yAxis.z, 0));
+  rotation.setRow(2, Vector4(zAxis.x, zAxis.y, zAxis.z, 0));
+
+  /// カメラ周りの回転なので平行移動を先に行う
   return rotation * translation;
 }
 
 Matrix4 getProjectiveTransform(double fovY, double aspect, double near, double far) {
   final f = 1 / math.tan(fovY / 2);
   final z = (far + near) / (near - far);
-  final w = 2 * far * near / (near - far);
+  final w = -2 * far * near / (near - far);
   return Matrix4(
     f / aspect, 0, 0, 0,
     0, f, 0, 0,
     0, 0, z, w,
     0, 0, -1, 0,
-  );
+  ).transposed();
 }
