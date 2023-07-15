@@ -3,6 +3,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gl/flutter_gl.dart';
 import 'package:flutter_pcd/pcd_view.dart';
+import 'package:color_map/color_map.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({Key? key}) : super(key: key);
@@ -94,16 +95,16 @@ class _MainPageState extends State<MainPage> {
   final pointLen = table.length - 1;
   final resultXYZ = Float32Array(pointLen * 3);
   final resultRGB = Float32Array(pointLen * 3);
-  final colorTween = ColorTween(begin: Colors.blue, end: Colors.red);
+  final cmap = Colormaps.turbo;
   for (var i = 1; i < table.length; i++) {
     final row = table[i];
     resultXYZ[(i - 1) * 3 + 0] = row[7];
     resultXYZ[(i - 1) * 3 + 1] = row[8];
     resultXYZ[(i - 1) * 3 + 2] = row[9];
-    final color = colorTween.lerp(row[0] / 255)!;
-    resultRGB[(i - 1) * 3 + 0] = color.red / 255;
-    resultRGB[(i - 1) * 3 + 1] = color.green / 255;
-    resultRGB[(i - 1) * 3 + 2] = color.blue / 255;
+    final color = cmap(row[0] / 255);
+    resultRGB[(i - 1) * 3 + 0] = color.r;
+    resultRGB[(i - 1) * 3 + 1] = color.g;
+    resultRGB[(i - 1) * 3 + 2] = color.b;
   }
   return (resultXYZ, resultRGB);
 }
