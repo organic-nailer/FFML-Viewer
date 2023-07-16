@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 import 'dart:math' as math;
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
