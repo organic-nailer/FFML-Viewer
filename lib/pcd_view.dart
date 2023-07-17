@@ -1,21 +1,24 @@
 import 'dart:typed_data';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:universal_html/html.dart' as html;
 
-import 'package:flutter/gestures.dart';
-import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart' hide Matrix4;
+import 'package:flutter/material.dart' hide Matrix4;
 import 'package:flutter_gl/flutter_gl.dart';
-import 'package:vector_math/vector_math_64.dart' show Vector3, Vector4;
+import 'package:vector_math/vector_math.dart' show Vector3, Vector4, Matrix4;
 
 class PcdView extends StatefulWidget {
   final Size canvasSize;
   final Float32Array vertices;
   final Float32Array colors;
+  final Color backgroundColor;
   const PcdView(
       {Key? key,
       required this.canvasSize,
       required this.vertices,
-      required this.colors})
+      required this.colors,
+      this.backgroundColor = Colors.black})
       : super(key: key);
 
   @override
@@ -24,6 +27,8 @@ class PcdView extends StatefulWidget {
 
 class _PcdViewState extends State<PcdView> {
   late FlutterGlPlugin _flutterGlPlugin;
+  late dynamic _defaultFrameBuffer;
+  late dynamic _sourceTexture;
   late dynamic _glProgram;
   late Future<void> _glFuture;
   final Matrix4 _viewingTransform = getViewingTransform(
@@ -32,6 +37,8 @@ class _PcdViewState extends State<PcdView> {
     Vector3(0, 1, 0),
   );
   late Matrix4 _projectiveTransform;
+  double prevTrackPadZoomScale = 1.0;
+  Offset currentTrackPadZoomPosition = Offset.zero;
 
   /// World Coordinate での原点中心の回転
   Matrix4 rotOriginTransform = Matrix4.identity();
@@ -87,18 +94,23 @@ class _PcdViewState extends State<PcdView> {
                 // タッチパッドの2本指スクロール
                 final zoom = signal.scrollDelta.dy;
                 const zoomFactor = 0.001;
-                viewZoom(zoom * zoomFactor, signal.position.dx, signal.position.dy);
-              }
-              else if(signal is PointerScaleEvent) {
+                viewZoom(
+                    zoom * zoomFactor, signal.position.dx, signal.position.dy);
+              } else if (signal is PointerScaleEvent) {
                 // タッチパッドの2本指ピンチ
                 final zoom = signal.scale;
                 const zoomFactor = 1;
-                viewZoom((zoom - 1) * zoomFactor, signal.position.dx, signal.position.dy);
+                viewZoom((zoom - 1) * zoomFactor, signal.position.dx,
+                    signal.position.dy);
               }
             },
             child: GestureDetector(
+              onScaleStart: (details) {
+                prevTrackPadZoomScale = 1.0;
+                currentTrackPadZoomPosition = details.focalPoint;
+              },
               onScaleUpdate: (details) {
-                if (details.pointerCount == 1) {
+                if (details.scale == 1.0) {
                   // rotate
                   final move = details.focalPointDelta;
                   final moveFactor = 90 / widget.canvasSize.height;
@@ -110,21 +122,39 @@ class _PcdViewState extends State<PcdView> {
                   setState(() {
                     rotOriginTransform = moveTransform * rotOriginTransform;
                   });
-                }
-                else if (details.pointerCount == 2) {
+                } else {
                   // zoom
-                  final zoom = details.scale;
-                  const zoomFactor = 0.01;
-                  viewZoom((zoom - 1) * zoomFactor, details.focalPoint.dx, details.focalPoint.dy);
+                  if (kIsWeb) {
+                    final zoom = details.scale;
+                    const zoomFactor = 0.01;
+                    viewZoom((zoom - 1) * zoomFactor, details.focalPoint.dx,
+                        details.focalPoint.dy);
+                  } else {
+                    // Windowsの場合、なぜかscaleが前からの合算の値を渡してくるのでこちらがわでdeltaを計算する
+                    // さらにdetails.focalPointがバグっているので使わない
+                    final zoom = details.scale / prevTrackPadZoomScale;
+                    const zoomFactor = 1;
+                    viewZoom(
+                        (zoom - 1) * zoomFactor,
+                        currentTrackPadZoomPosition.dx,
+                        currentTrackPadZoomPosition.dy);
+                    prevTrackPadZoomScale = details.scale;
+                  }
                 }
+              },
+              onScaleEnd: (details) {
+                prevTrackPadZoomScale = 1.0;
+                currentTrackPadZoomPosition = Offset.zero;
               },
               child: Container(
                 width: widget.canvasSize.width,
                 height: widget.canvasSize.height,
-                color: Colors.yellowAccent,
-                child: HtmlElementView(
-                  viewType: _flutterGlPlugin.textureId!.toString(),
-                ),
+                color: widget.backgroundColor,
+                child: kIsWeb
+                    ? HtmlElementView(
+                        viewType: _flutterGlPlugin.textureId!.toString(),
+                      )
+                    : Texture(textureId: _flutterGlPlugin.textureId!),
               ),
             ),
           );
@@ -142,25 +172,55 @@ class _PcdViewState extends State<PcdView> {
     await _flutterGlPlugin.initialize(options: {
       "antialias": true,
       "alpha": false,
-      "width": widget.canvasSize.width,
-      "height": widget.canvasSize.height,
+      "width": widget.canvasSize.width.toInt(),
+      "height": widget.canvasSize.height.toInt(),
       "dpr": 1.0,
     });
+    await Future.delayed(const Duration(milliseconds: 100));
     final gl = _flutterGlPlugin.gl;
-    _glProgram = initGL(gl, widget.vertices, widget.colors);
+    await setupFBO();
+    await initGL(gl, widget.vertices, widget.colors);
   }
 
-  void render() {
+  Future<void> setupFBO() async {
+    if (kIsWeb) return;
+
+    await _flutterGlPlugin.prepareContext();
+
+    // setup default FrameBufferObject(FBO)
+    final gl = _flutterGlPlugin.gl;
+    final width = widget.canvasSize.width.toInt();
+    final height = widget.canvasSize.height.toInt();
+
+    _defaultFrameBuffer = gl.createFramebuffer();
+    final defaultFrameBufferTexture = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0);
+
+    gl.bindTexture(gl.TEXTURE_2D, defaultFrameBufferTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA,
+        gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, _defaultFrameBuffer);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D,
+        defaultFrameBufferTexture, 0);
+
+    _sourceTexture = defaultFrameBufferTexture;
+  }
+
+  void render() async {
+    print("render");
     final gl = _flutterGlPlugin.gl;
     final size = widget.canvasSize;
-    const color = Colors.black;
+    final color = widget.backgroundColor;
     final verticesLength = widget.vertices.length ~/ 3;
     // set transform
     final transformLoc = gl.getUniformLocation(_glProgram, 'transform');
-    final transform = _projectiveTransform
-      * cameraMoveTransform
-      * _viewingTransform
-      * rotOriginTransform;
+    final transform = _projectiveTransform *
+        cameraMoveTransform *
+        _viewingTransform *
+        rotOriginTransform;
     gl.uniformMatrix4fv(transformLoc, false, transform.storage);
 
     // workaround for web: HTMLのcanvasの属性(width, height)を変更しないと、
@@ -173,37 +233,27 @@ class _PcdViewState extends State<PcdView> {
       htmlCanvas.height = size.height.toInt();
     }
 
-    gl.viewport(0, 0, size.width, size.height);
+    gl.viewport(0, 0, size.width.toInt(), size.height.toInt());
     gl.clearColor(color.red / 255, color.green / 255, color.blue / 255, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
     // gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.drawArrays(gl.POINTS, 0, verticesLength);
 
     gl.finish();
+
+    if (!kIsWeb) {
+      _flutterGlPlugin.updateTexture(_sourceTexture);
+    }
   }
 
   void updateVertices(Float32Array vertices, Float32Array colors) {
     final gl = _flutterGlPlugin.gl;
-    final vertexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, vertices.length, vertices, gl.STATIC_DRAW);
-
-    final aPosition = gl.getAttribLocation(_glProgram, 'a_Position');
-    gl.enableVertexAttribArray(aPosition);
-    gl.vertexAttribPointer(
-        aPosition, 3, gl.FLOAT, false, Float32List.bytesPerElement * 3, 0);
-
-    final colorBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, colors.length, colors, gl.STATIC_DRAW);
-
-    final aColor = gl.getAttribLocation(_glProgram, 'a_Color');
-    gl.enableVertexAttribArray(aColor);
-    gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, Float32List.bytesPerElement * 3, 0);
+    setDataToAttribute(gl, _glProgram, vertices, "a_Position");
+    setDataToAttribute(gl, _glProgram, colors, "a_Color");
   }
 
   void viewZoom(double zoomNormalized, double mousePosX, double mousePosY) {
-    print("zoomNormalized: ${zoomNormalized}");
+    // print("zoomNormalized: ${zoomNormalized}");
     // ズーム時のマウス位置の方向にカメラを移動させる
     final mouseClipX = mousePosX / widget.canvasSize.width * 2 - 1;
     final mouseClipY = -(mousePosY / widget.canvasSize.height * 2 - 1);
@@ -211,16 +261,16 @@ class _PcdViewState extends State<PcdView> {
     Vector4 forwarding = invMat * Vector4(mouseClipX, mouseClipY, 0, 1);
     forwarding = forwarding / forwarding.w;
     Vector3 forwarding3 = forwarding.xyz.normalized();
-    
-    // カメラ位置が世界座標の原点を超えないよう移動量を制限する
-    final worldOrigin = (cameraMoveTransform
-      * _viewingTransform
-      * rotOriginTransform) * Vector4(0, 0, 0, 1);
 
-    print("forwarding: ${forwarding3}");
-    print("worldOrigin: ${worldOrigin}");
+    // カメラ位置が世界座標の原点を超えないよう移動量を制限する
+    final worldOrigin =
+        (cameraMoveTransform * _viewingTransform * rotOriginTransform) *
+            Vector4(0, 0, 0, 1);
+
+    // print("forwarding: ${forwarding3}");
+    // print("worldOrigin: ${worldOrigin}");
     final d = forwarding3.dot(worldOrigin.xyz) / forwarding3.length;
-    print("d: ${d}");
+    // print("d: ${d}");
     final moveFactor = d * 0.5;
 
     final translate = Matrix4.identity();
@@ -230,10 +280,10 @@ class _PcdViewState extends State<PcdView> {
       cameraMoveTransform = translate * cameraMoveTransform;
     });
   }
-}
 
-dynamic initGL(dynamic gl, Float32Array vertices, Float32Array colors) {
-  const vertexShaderSource = """#version 300 es
+  dynamic initGL(dynamic gl, Float32Array vertices, Float32Array colors) {
+    gl.enable(0x8642); // GL_PROGRAM_POINT_SIZE
+    const vertexShaderSource = """#version ${kIsWeb ? "300 es" : "150"}
 #define attribute in
 #define varying out
 attribute vec3 a_Position;
@@ -246,7 +296,7 @@ void main() {
   v_Color = a_Color;
 }
 """;
-  const fragmentShaderSource = """#version 300 es
+    const fragmentShaderSource = """#version ${kIsWeb ? "300 es" : "150"}
 out highp vec4 pc_fragColor;
 #define gl_FragColor pc_fragColor
 #define varying in
@@ -259,65 +309,57 @@ void main() {
 }
 """;
 
-  final vertexShader = gl.createShader(gl.VERTEX_SHADER);
-  gl.shaderSource(vertexShader, vertexShaderSource);
-  gl.compileShader(vertexShader);
+    final vertexShader = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vertexShader, vertexShaderSource);
+    gl.compileShader(vertexShader);
 
-  var _res = gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS);
-  if (_res == 0 || _res == false) {
-    print("Error compiling shader: ${gl.getShaderInfoLog(vertexShader)}");
-    return;
+    var _res = gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS);
+    if (_res == 0 || _res == false) {
+      print("Error compiling shader: ${gl.getShaderInfoLog(vertexShader)}");
+      return;
+    }
+
+    final fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fragmentShader, fragmentShaderSource);
+    gl.compileShader(fragmentShader);
+
+    _res = gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS);
+    if (_res == 0 || _res == false) {
+      print("Error compiling shader: ${gl.getShaderInfoLog(fragmentShader)}");
+      return;
+    }
+
+    _glProgram = gl.createProgram();
+    gl.attachShader(_glProgram, vertexShader);
+    gl.attachShader(_glProgram, fragmentShader);
+    gl.linkProgram(_glProgram);
+
+    _res = gl.getProgramParameter(_glProgram, gl.LINK_STATUS);
+    print(" initShaders LINK_STATUS _res: ${_res} ");
+    if (_res == false || _res == 0) {
+      print("Unable to initialize the shader program");
+    }
+
+    gl.useProgram(_glProgram);
+
+    final vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+
+    updateVertices(vertices, colors);
+
+    // 1回だとうまく表示されないので、間をおいて再び呼び出す
+    Future.delayed(const Duration(milliseconds: 100), () {
+      setState(() {
+      updateVertices(vertices, colors);
+      });
+    });
   }
-
-  final fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-  gl.shaderSource(fragmentShader, fragmentShaderSource);
-  gl.compileShader(fragmentShader);
-
-  _res = gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS);
-  if (_res == 0 || _res == false) {
-    print("Error compiling shader: ${gl.getShaderInfoLog(fragmentShader)}");
-    return;
-  }
-
-  final glProgram = gl.createProgram();
-  gl.attachShader(glProgram, vertexShader);
-  gl.attachShader(glProgram, fragmentShader);
-  gl.linkProgram(glProgram);
-
-  _res = gl.getProgramParameter(glProgram, gl.LINK_STATUS);
-  print(" initShaders LINK_STATUS _res: ${_res} ");
-  if (_res == false || _res == 0) {
-    print("Unable to initialize the shader program");
-  }
-
-  gl.useProgram(glProgram);
-
-  final vao = gl.createVertexArray();
-  gl.bindVertexArray(vao);
-
-  final vertexBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, vertices.length, vertices, gl.STATIC_DRAW);
-
-  final aPosition = gl.getAttribLocation(glProgram, 'a_Position');
-  gl.enableVertexAttribArray(aPosition);
-  gl.vertexAttribPointer(
-      aPosition, 3, gl.FLOAT, false, Float32List.bytesPerElement * 3, 0);
-
-  final colorBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, colors.length, colors, gl.STATIC_DRAW);
-
-  final aColor = gl.getAttribLocation(glProgram, 'a_Color');
-  gl.enableVertexAttribArray(aColor);
-  gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, Float32List.bytesPerElement * 3, 0);
-
-  return glProgram;
 }
 
 /// LookAt方式のビュー変換行列を返す
 /// パラメータは世界座標系
-Matrix4 getViewingTransform(Vector3 cameraPosition, Vector3 lookAt, Vector3 up) {
+Matrix4 getViewingTransform(
+    Vector3 cameraPosition, Vector3 lookAt, Vector3 up) {
   final zAxis = (cameraPosition - lookAt).normalized();
   final xAxis = up.cross(zAxis).normalized();
   final yAxis = zAxis.cross(xAxis).normalized();
@@ -332,14 +374,43 @@ Matrix4 getViewingTransform(Vector3 cameraPosition, Vector3 lookAt, Vector3 up) 
   return rotation * translation;
 }
 
-Matrix4 getProjectiveTransform(double fovY, double aspect, double near, double far) {
+Matrix4 getProjectiveTransform(
+    double fovY, double aspect, double near, double far) {
   final f = 1 / math.tan(fovY / 2);
   final z = (far + near) / (near - far);
   final w = -2 * far * near / (near - far);
   return Matrix4(
-    f / aspect, 0, 0, 0,
-    0, f, 0, 0,
-    0, 0, z, w,
-    0, 0, -1, 0,
+    f / aspect,
+    0,
+    0,
+    0,
+    0,
+    f,
+    0,
+    0,
+    0,
+    0,
+    z,
+    w,
+    0,
+    0,
+    -1,
+    0,
   ).transposed();
+}
+
+void setDataToAttribute(
+    dynamic gl, dynamic glProgram, Float32Array data, String attributeName) {
+  final buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  if (kIsWeb) {
+    gl.bufferData(gl.ARRAY_BUFFER, data.length, data, gl.STATIC_DRAW);
+  } else {
+    gl.bufferData(gl.ARRAY_BUFFER, data.lengthInBytes, data, gl.STATIC_DRAW);
+  }
+
+  final attribute = gl.getAttribLocation(glProgram, attributeName);
+  gl.enableVertexAttribArray(attribute);
+  gl.vertexAttribPointer(
+      attribute, 3, gl.FLOAT, false, Float32List.bytesPerElement * 3, 0);
 }

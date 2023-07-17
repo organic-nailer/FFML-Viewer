@@ -34,12 +34,18 @@ class _MainPageState extends State<MainPage> {
               canvasSize: canvasSize, 
               vertices: _vertices, 
               colors: _colors,
+              backgroundColor: Colors.white,
             );
           }
         ),
         floatingActionButton: FloatingActionButton(
           child: Icon(Icons.file_upload),
           onPressed: () async {
+            // final pointCloud = genCube(21);
+            // setState(() {
+            //   _vertices = pointCloud.$1;
+            //   _colors = pointCloud.$2;
+            // });
             const typeGroup = XTypeGroup(
               label: "point cloud",
               extensions: ["csv"],
