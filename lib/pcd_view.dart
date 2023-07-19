@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:universal_html/html.dart' as html;
@@ -12,14 +11,16 @@ class PcdView extends StatefulWidget {
   final Size canvasSize;
   final Float32Array vertices;
   final Float32Array colors;
+  final int maxPointNum;
   final Color backgroundColor;
   const PcdView(
       {Key? key,
       required this.canvasSize,
       required this.vertices,
       required this.colors,
+      int? maxPointNum,
       this.backgroundColor = Colors.black})
-      : super(key: key);
+      : maxPointNum = maxPointNum ?? vertices.length ~/ 3, super(key: key);
 
   @override
   State<PcdView> createState() => _PcdViewState();
@@ -30,6 +31,8 @@ class _PcdViewState extends State<PcdView> {
   late dynamic _defaultFrameBuffer;
   late dynamic _sourceTexture;
   late dynamic _glProgram;
+  late dynamic _posBuffer;
+  late dynamic _colBuffer;
   late Future<void> _glFuture;
   final Matrix4 _viewingTransform = getViewingTransform(
     Vector3(0, 0, 3),
@@ -210,7 +213,6 @@ class _PcdViewState extends State<PcdView> {
   }
 
   void render() async {
-    print("render");
     final gl = _flutterGlPlugin.gl;
     final size = widget.canvasSize;
     final color = widget.backgroundColor;
@@ -248,8 +250,8 @@ class _PcdViewState extends State<PcdView> {
 
   void updateVertices(Float32Array vertices, Float32Array colors) {
     final gl = _flutterGlPlugin.gl;
-    setDataToAttribute(gl, _glProgram, vertices, "a_Position");
-    setDataToAttribute(gl, _glProgram, colors, "a_Color");
+    updateBuffer(gl, _posBuffer, vertices);
+    updateBuffer(gl, _colBuffer, colors);
   }
 
   void viewZoom(double zoomNormalized, double mousePosX, double mousePosY) {
@@ -345,12 +347,14 @@ void main() {
     final vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
 
-    updateVertices(vertices, colors);
+    _posBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Position");
+    _colBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, colors, "a_Color");
 
     // 1回だとうまく表示されないので、間をおいて再び呼び出す
     Future.delayed(const Duration(milliseconds: 100), () {
       setState(() {
-      updateVertices(vertices, colors);
+        _posBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Position");
+        _colBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, colors, "a_Color");
       });
     });
   }
@@ -399,18 +403,37 @@ Matrix4 getProjectiveTransform(
   ).transposed();
 }
 
-void setDataToAttribute(
-    dynamic gl, dynamic glProgram, Float32Array data, String attributeName) {
+dynamic setDataToAttribute(
+    dynamic gl, dynamic glProgram, int maxPointNum, Float32Array data, String attributeName) {
   final buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  Float32Array initData = Float32Array(maxPointNum * 3);
   if (kIsWeb) {
-    gl.bufferData(gl.ARRAY_BUFFER, data.length, data, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, initData.length, initData, gl.DYNAMIC_DRAW);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.length);
   } else {
-    gl.bufferData(gl.ARRAY_BUFFER, data.lengthInBytes, data, gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, initData.lengthInBytes, initData, gl.DYNAMIC_DRAW);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.lengthInBytes);
   }
 
   final attribute = gl.getAttribLocation(glProgram, attributeName);
   gl.enableVertexAttribArray(attribute);
   gl.vertexAttribPointer(
       attribute, 3, gl.FLOAT, false, Float32List.bytesPerElement * 3, 0);
+  
+
+  return buffer;
+}
+
+void updateBuffer(
+  dynamic gl, dynamic buffer, Float32Array data
+) {
+  // bufferSubDataでは最初にBufferDataで指定したサイズ以上のデータを受け入れてくれないので注意
+  // 最初に想定される最大サイズで初期化する必要がある
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  if (kIsWeb) {
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.length);
+  } else {
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.lengthInBytes);
+  }
 }

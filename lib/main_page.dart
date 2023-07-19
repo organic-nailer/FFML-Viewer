@@ -1,5 +1,6 @@
+import 'dart:math';
+
 import 'package:csv/csv.dart';
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gl/flutter_gl.dart';
 import 'package:flutter_pcd/pcd_view.dart';
@@ -15,11 +16,12 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   late Float32Array _vertices;
   late Float32Array _colors;
+  int counter = 0;
 
   @override
   void initState() {
     super.initState();
-    final cube = genCube(21);
+    final cube = genCube(5);
     _vertices = cube.$1;
     _colors = cube.$2;
   }
@@ -34,33 +36,35 @@ class _MainPageState extends State<MainPage> {
               canvasSize: canvasSize, 
               vertices: _vertices, 
               colors: _colors,
-              backgroundColor: Colors.white,
+              maxPointNum: 29*29*29,
+              backgroundColor: Colors.grey.shade900,
             );
           }
         ),
         floatingActionButton: FloatingActionButton(
-          child: Icon(Icons.file_upload),
+          child: Text("$counter"),
           onPressed: () async {
-            // final pointCloud = genCube(21);
+            final pointCloud = genCube(Random().nextInt(20) + 10);
+            setState(() {
+              _vertices = pointCloud.$1;
+              _colors = pointCloud.$2;
+              counter++;
+            });
+            // const typeGroup = XTypeGroup(
+            //   label: "point cloud",
+            //   extensions: ["csv"],
+            // );
+            // final file = await openFile(acceptedTypeGroups: [typeGroup]);
+            // if (file == null) {
+            //   print("no file selected");
+            //   return;
+            // }
+            // final content = await file.readAsString();
+            // final pointCloud = readVeloCsv(content);
             // setState(() {
             //   _vertices = pointCloud.$1;
             //   _colors = pointCloud.$2;
             // });
-            const typeGroup = XTypeGroup(
-              label: "point cloud",
-              extensions: ["csv"],
-            );
-            final file = await openFile(acceptedTypeGroups: [typeGroup]);
-            if (file == null) {
-              print("no file selected");
-              return;
-            }
-            final content = await file.readAsString();
-            final pointCloud = readVeloCsv(content);
-            setState(() {
-              _vertices = pointCloud.$1;
-              _colors = pointCloud.$2;
-            });
           },
         ),
       );
