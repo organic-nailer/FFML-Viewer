@@ -76,8 +76,8 @@ class _PcdViewState extends State<PcdView> {
       _projectiveTransform = getProjectiveTransform(
         30 * math.pi / 180,
         widget.canvasSize.width / widget.canvasSize.height,
-        -1,
-        -10,
+        -0.01,
+        -300,
       );
     }
     super.didUpdateWidget(oldWidget);
