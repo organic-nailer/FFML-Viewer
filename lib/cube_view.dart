@@ -7,13 +7,88 @@ import 'package:flutter/material.dart' hide Matrix4;
 import 'package:flutter_gl/flutter_gl.dart';
 import 'package:vector_math/vector_math.dart' show Vector3, Vector4, Matrix4;
 
-class PcdView extends StatefulWidget {
+(Float32Array, Float32Array) genTetrahedron() {
+  final a = [0.0,0.5,0.5];
+  final b = [-0.5,-0.5,0.5];
+  final c = [0.0,0.0,-0.5];
+  final d = [0.5,-0.5,0.5];
+  final vertices = Float32Array.fromList([
+    ...a, ...b, ...c,
+    ...a, ...d, ...c,
+    ...b, ...c, ...d,
+    ...a, ...b, ...d,
+  ]);
+
+  final white = [1.0,1.0,1.0];
+  final red = [1.0,0.0,0.0];
+  final green = [0.0,1.0,0.0];
+  final blue = [0.0,0.0,1.0];
+  final colors = Float32Array.fromList([
+    ...white, ...white, ...white,
+    ...red, ...red, ...red,
+    ...green, ...green, ...green,
+    ...blue, ...blue, ...blue,
+  ]);
+  return (vertices, colors);
+}
+
+(Float32Array, Float32Array) genCube(int sidePts) {
+  // x y z
+  final resultXYZ = Float32Array(sidePts * sidePts * sidePts * 3);
+  for (var x = 0; x < sidePts; x++) {
+    for (var y = 0; y < sidePts; y++) {
+      for (var z = 0; z < sidePts; z++) {
+        final index = x * sidePts * sidePts + y * sidePts + z;
+        resultXYZ[index * 3 + 0] = x / (sidePts - 1) - 0.5;
+        resultXYZ[index * 3 + 1] = y / (sidePts - 1) - 0.5;
+        resultXYZ[index * 3 + 2] = z / (sidePts - 1) - 0.5;
+      }
+    }
+  }
+  // r g b
+  final resultRGB = Float32Array(sidePts * sidePts * sidePts * 3);
+  for (var x = 0; x < sidePts; x++) {
+    for (var y = 0; y < sidePts; y++) {
+      for (var z = 0; z < sidePts; z++) {
+        final index = x * sidePts * sidePts + y * sidePts + z;
+        resultRGB[index * 3 + 0] = x / (sidePts - 1);
+        resultRGB[index * 3 + 1] = y / (sidePts - 1);
+        resultRGB[index * 3 + 2] = z / (sidePts - 1);
+      }
+    }
+  }
+  print("done");
+  return (resultXYZ, resultRGB);
+}
+
+class CubePage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final (vertices, colors) = genTetrahedron();
+    return Scaffold(
+      body: LayoutBuilder(
+        builder: ((context, constraints) {
+          final canvasSize = constraints.biggest;
+          return CubeView(
+            canvasSize: canvasSize,
+            vertices: vertices,
+            colors: colors,
+            maxPointNum: vertices.length ~/ 3,
+            backgroundColor: Colors.grey.shade500,
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class CubeView extends StatefulWidget {
   final Size canvasSize;
   final Float32Array vertices;
   final Float32Array colors;
   final int maxPointNum;
   final Color backgroundColor;
-  const PcdView(
+  const CubeView(
       {Key? key,
       required this.canvasSize,
       required this.vertices,
@@ -23,10 +98,10 @@ class PcdView extends StatefulWidget {
       : maxPointNum = maxPointNum ?? vertices.length ~/ 3, super(key: key);
 
   @override
-  State<PcdView> createState() => _PcdViewState();
+  State<CubeView> createState() => _CubeViewState();
 }
 
-class _PcdViewState extends State<PcdView> {
+class _CubeViewState extends State<CubeView> {
   late FlutterGlPlugin _flutterGlPlugin;
   late dynamic _defaultFrameBuffer;
   late dynamic _sourceTexture;
@@ -35,13 +110,11 @@ class _PcdViewState extends State<PcdView> {
   late dynamic _colBuffer;
   late Future<void> _glFuture;
   final Matrix4 _viewingTransform = getViewingTransform(
-    Vector3(0, 0, 3),
+    Vector3(0, 0, 6),
     Vector3(0, 0, 0),
     Vector3(0, 1, 0),
   );
   late Matrix4 _projectiveTransform;
-  double prevTrackPadZoomScale = 1.0;
-  Offset currentTrackPadZoomPosition = Offset.zero;
 
   /// World Coordinate での原点中心の回転
   Matrix4 rotOriginTransform = Matrix4.identity();
@@ -68,7 +141,7 @@ class _PcdViewState extends State<PcdView> {
   }
 
   @override
-  void didUpdateWidget(covariant PcdView oldWidget) {
+  void didUpdateWidget(covariant CubeView oldWidget) {
     if (oldWidget.vertices != widget.vertices) {
       updateVertices(widget.vertices, widget.colors);
     }
@@ -90,75 +163,27 @@ class _PcdViewState extends State<PcdView> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
           render();
-          return Listener(
-            onPointerSignal: (signal) {
-              if (signal is PointerScrollEvent) {
-                // マウスホイールのスクロール
-                // タッチパッドの2本指スクロール
-                final zoom = signal.scrollDelta.dy;
-                const zoomFactor = 0.001;
-                viewZoom(
-                    zoom * zoomFactor, signal.position.dx, signal.position.dy);
-              } else if (signal is PointerScaleEvent) {
-                // タッチパッドの2本指ピンチ
-                final zoom = signal.scale;
-                const zoomFactor = 1;
-                viewZoom((zoom - 1) * zoomFactor, signal.position.dx,
-                    signal.position.dy);
+          return GestureDetector(
+            onScaleUpdate: (details) {
+              if (details.scale == 1.0) {
+                // rotate
+                final move = details.focalPointDelta;
+                final moveFactor = 90 / widget.canvasSize.height;
+                final moveThetaX = move.dx * moveFactor * math.pi / 180;
+                final moveThetaY = move.dy * moveFactor * math.pi / 180;
+                final moveTransform = Matrix4.identity()
+                  ..rotateX(moveThetaY)
+                  ..rotateY(moveThetaX);
+                setState(() {
+                  rotOriginTransform = moveTransform * rotOriginTransform;
+                });
               }
             },
-            child: GestureDetector(
-              onScaleStart: (details) {
-                prevTrackPadZoomScale = 1.0;
-                currentTrackPadZoomPosition = details.focalPoint;
-              },
-              onScaleUpdate: (details) {
-                if (details.scale == 1.0) {
-                  // rotate
-                  final move = details.focalPointDelta;
-                  final moveFactor = 90 / widget.canvasSize.height;
-                  final moveThetaX = move.dx * moveFactor * math.pi / 180;
-                  final moveThetaY = move.dy * moveFactor * math.pi / 180;
-                  final moveTransform = Matrix4.identity()
-                    ..rotateX(moveThetaY)
-                    ..rotateY(moveThetaX);
-                  setState(() {
-                    rotOriginTransform = moveTransform * rotOriginTransform;
-                  });
-                } else {
-                  // zoom
-                  if (kIsWeb) {
-                    final zoom = details.scale;
-                    const zoomFactor = 0.01;
-                    viewZoom((zoom - 1) * zoomFactor, details.focalPoint.dx,
-                        details.focalPoint.dy);
-                  } else {
-                    // Windowsの場合、なぜかscaleが前からの合算の値を渡してくるのでこちらがわでdeltaを計算する
-                    // さらにdetails.focalPointがバグっているので使わない
-                    final zoom = details.scale / prevTrackPadZoomScale;
-                    const zoomFactor = 1;
-                    viewZoom(
-                        (zoom - 1) * zoomFactor,
-                        currentTrackPadZoomPosition.dx,
-                        currentTrackPadZoomPosition.dy);
-                    prevTrackPadZoomScale = details.scale;
-                  }
-                }
-              },
-              onScaleEnd: (details) {
-                prevTrackPadZoomScale = 1.0;
-                currentTrackPadZoomPosition = Offset.zero;
-              },
-              child: Container(
-                width: widget.canvasSize.width,
-                height: widget.canvasSize.height,
-                color: widget.backgroundColor,
-                child: kIsWeb
-                    ? HtmlElementView(
-                        viewType: _flutterGlPlugin.textureId!.toString(),
-                      )
-                    : Texture(textureId: _flutterGlPlugin.textureId!),
-              ),
+            child: Container(
+              width: widget.canvasSize.width,
+              height: widget.canvasSize.height,
+              color: widget.backgroundColor,
+              child: Texture(textureId: _flutterGlPlugin.textureId!)
             ),
           );
         } else {
@@ -186,8 +211,6 @@ class _PcdViewState extends State<PcdView> {
   }
 
   Future<void> setupFBO() async {
-    if (kIsWeb) return;
-
     await _flutterGlPlugin.prepareContext();
 
     // setup default FrameBufferObject(FBO)
@@ -235,6 +258,7 @@ class _PcdViewState extends State<PcdView> {
         cameraMoveTransform *
         _viewingTransform *
         rotOriginTransform;
+    // final transform = Matrix4.identity();
     gl.uniformMatrix4fv(transformLoc, false, transform.storage);
 
     // workaround for web: HTMLのcanvasの属性(width, height)を変更しないと、
@@ -251,13 +275,11 @@ class _PcdViewState extends State<PcdView> {
     gl.clearColor(color.red / 255, color.green / 255, color.blue / 255, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     // gl.drawArrays(gl.TRIANGLES, 0, 3);
-    gl.drawArrays(gl.POINTS, 0, verticesLength);
+    gl.drawArrays(gl.TRIANGLES, 0, verticesLength);
 
     gl.finish();
 
-    if (!kIsWeb) {
-      _flutterGlPlugin.updateTexture(_sourceTexture);
-    }
+    _flutterGlPlugin.updateTexture(_sourceTexture);
   }
 
   void updateVertices(Float32Array vertices, Float32Array colors) {
@@ -266,39 +288,10 @@ class _PcdViewState extends State<PcdView> {
     updateBuffer(gl, _colBuffer, colors);
   }
 
-  void viewZoom(double zoomNormalized, double mousePosX, double mousePosY) {
-    // print("zoomNormalized: ${zoomNormalized}");
-    // ズーム時のマウス位置の方向にカメラを移動させる
-    final mouseClipX = mousePosX / widget.canvasSize.width * 2 - 1;
-    final mouseClipY = -(mousePosY / widget.canvasSize.height * 2 - 1);
-    final invMat = Matrix4.inverted(_projectiveTransform);
-    Vector4 forwarding = invMat * Vector4(mouseClipX, mouseClipY, 0, 1);
-    forwarding = forwarding / forwarding.w;
-    Vector3 forwarding3 = forwarding.xyz.normalized();
-
-    // カメラ位置が世界座標の原点を超えないよう移動量を制限する
-    final worldOrigin =
-        (cameraMoveTransform * _viewingTransform * rotOriginTransform) *
-            Vector4(0, 0, 0, 1);
-
-    // print("forwarding: ${forwarding3}");
-    // print("worldOrigin: ${worldOrigin}");
-    final d = forwarding3.dot(worldOrigin.xyz) / forwarding3.length;
-    // print("d: ${d}");
-    final moveFactor = d * 0.5;
-
-    final translate = Matrix4.identity();
-    translate.setTranslation(-forwarding3 * zoomNormalized * moveFactor);
-
-    setState(() {
-      cameraMoveTransform = translate * cameraMoveTransform;
-    });
-  }
-
   dynamic initGL(dynamic gl, Float32Array vertices, Float32Array colors) {
     gl.enable(0x8642); // GL_PROGRAM_POINT_SIZE
     gl.enable(gl.DEPTH_TEST);
-    const vertexShaderSource = """#version ${kIsWeb ? "300 es" : "150"}
+    const vertexShaderSource = """#version 150
 #define attribute in
 #define varying out
 attribute vec3 a_Position;
@@ -311,7 +304,7 @@ void main() {
   v_Color = a_Color;
 }
 """;
-    const fragmentShaderSource = """#version ${kIsWeb ? "300 es" : "150"}
+    const fragmentShaderSource = """#version 150
 out highp vec4 pc_fragColor;
 #define gl_FragColor pc_fragColor
 #define varying in
@@ -409,13 +402,8 @@ dynamic setDataToAttribute(
   final buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   Float32Array initData = Float32Array(maxPointNum * 3);
-  if (kIsWeb) {
-    gl.bufferData(gl.ARRAY_BUFFER, initData.length, initData, gl.DYNAMIC_DRAW);
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.length);
-  } else {
-    gl.bufferData(gl.ARRAY_BUFFER, initData.lengthInBytes, initData, gl.DYNAMIC_DRAW);
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.lengthInBytes);
-  }
+  gl.bufferData(gl.ARRAY_BUFFER, initData.lengthInBytes, initData, gl.DYNAMIC_DRAW);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.lengthInBytes);
 
   final attribute = gl.getAttribLocation(glProgram, attributeName);
   gl.enableVertexAttribArray(attribute);
@@ -432,9 +420,5 @@ void updateBuffer(
   // bufferSubDataでは最初にBufferDataで指定したサイズ以上のデータを受け入れてくれないので注意
   // 最初に想定される最大サイズで初期化する必要がある
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  if (kIsWeb) {
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.length);
-  } else {
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.lengthInBytes);
-  }
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.lengthInBytes);
 }

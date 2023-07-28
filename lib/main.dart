@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_pcd/cube_view.dart';
 import 'package:flutter_pcd/main_page.dart';
 import 'package:flutter_pcd/pcap_page.dart';
 
@@ -19,6 +20,7 @@ class MyApp extends StatelessWidget {
       ),
       // home: const MainPage(),
       home: const PcapPage()
+      // home: CubePage(),
     );
   }
 }
