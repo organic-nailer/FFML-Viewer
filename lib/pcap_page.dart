@@ -1,7 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:csv/csv.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gl/flutter_gl.dart';
+import 'package:flutter_pcd/ffi.dart';
 import 'package:flutter_pcd/hesai_pcap_parser.dart';
 import 'package:flutter_pcd/pcd_view.dart';
 import 'package:color_map/color_map.dart';
@@ -18,8 +21,8 @@ class _PcapPageState extends State<PcapPage> {
   int selectedFrame = 1;
   int maxFrameNum = 0;
   late int maxPointNum;
-  List<List<VeloPoint>> frames = [];
-  List<(Float32Array, Float32Array)> _vertices = [];
+  // List<List<VeloPoint>> frames = [];
+  List<(Float32List, Float32List)> _vertices = [];
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +32,7 @@ class _PcapPageState extends State<PcapPage> {
             final canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
             return Stack(
               children: [
-                frames.isNotEmpty ? Positioned.fill(
+                _vertices.isNotEmpty ? Positioned.fill(
                   child: PcdView(
                     canvasSize: canvasSize, 
                     vertices: _vertices[selectedFrame].$1,
@@ -84,16 +87,28 @@ class _PcapPageState extends State<PcapPage> {
               print("no file selected");
               return;
             }
-            final parser = HesaiPcapParser(file);
-            await parser.readPcap();
-
-            final pointClouds = parser.frames.map((frame) => readVeloPoints(frame)).toList();
+            final path = file.path;
+            final stopwatch = Stopwatch()..start();
+            final videoData = await api.readPcap(path: path);
+            stopwatch.stop();
+            print("read pcap took ${stopwatch.elapsedMilliseconds}ms");
+            print("loaded ${videoData.vertices.length} frames");
+            print("max point num: ${videoData.maxPointNum}");
             setState(() {
-              frames = parser.frames;
-              _vertices = pointClouds;
-              maxFrameNum = parser.frames.length - 1;
-              maxPointNum = pointClouds.map((f) => f.$1.length).reduce(math.max);
+              _vertices = videoData.vertices;
+              maxFrameNum = videoData.vertices.length - 1;
+              maxPointNum = videoData.maxPointNum;
             });
+            // final parser = HesaiPcapParser(file);
+            // await parser.readPcap();
+
+            // final pointClouds = parser.frames.map((frame) => readVeloPoints(frame)).toList();
+            // setState(() {
+            //   frames = parser.frames;
+            //   _vertices = pointClouds;
+            //   maxFrameNum = parser.frames.length - 1;
+            //   maxPointNum = pointClouds.map((f) => f.$1.length).reduce(math.max);
+            // });
           },
         ),
       );

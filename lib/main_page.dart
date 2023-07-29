@@ -34,8 +34,8 @@ class _MainPageState extends State<MainPage> {
             final canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
             return PcdView(
               canvasSize: canvasSize, 
-              vertices: _vertices, 
-              colors: _colors,
+              vertices: _vertices.toDartList(), 
+              colors: _colors.toDartList(),
               maxPointNum: 29*29*29,
               backgroundColor: Colors.grey.shade900,
             );

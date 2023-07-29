@@ -9,8 +9,8 @@ import 'package:vector_math/vector_math.dart' show Vector3, Vector4, Matrix4;
 
 class PcdView extends StatefulWidget {
   final Size canvasSize;
-  final Float32Array vertices;
-  final Float32Array colors;
+  final Float32List vertices;
+  final Float32List colors;
   final int maxPointNum;
   final Color backgroundColor;
   const PcdView(
@@ -260,7 +260,7 @@ class _PcdViewState extends State<PcdView> {
     }
   }
 
-  void updateVertices(Float32Array vertices, Float32Array colors) {
+  void updateVertices(Float32List vertices, Float32List colors) {
     final gl = _flutterGlPlugin.gl;
     updateBuffer(gl, _posBuffer, vertices);
     updateBuffer(gl, _colBuffer, colors);
@@ -295,7 +295,7 @@ class _PcdViewState extends State<PcdView> {
     });
   }
 
-  dynamic initGL(dynamic gl, Float32Array vertices, Float32Array colors) {
+  dynamic initGL(dynamic gl, Float32List vertices, Float32List colors) {
     gl.enable(0x8642); // GL_PROGRAM_POINT_SIZE
     gl.enable(gl.DEPTH_TEST);
     const vertexShaderSource = """#version ${kIsWeb ? "300 es" : "150"}
@@ -405,7 +405,7 @@ Matrix4 getProjectiveTransform(
 }
 
 dynamic setDataToAttribute(
-    dynamic gl, dynamic glProgram, int maxPointNum, Float32Array data, String attributeName) {
+    dynamic gl, dynamic glProgram, int maxPointNum, dynamic data, String attributeName) {
   final buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   Float32Array initData = Float32Array(maxPointNum * 3);
@@ -427,7 +427,7 @@ dynamic setDataToAttribute(
 }
 
 void updateBuffer(
-  dynamic gl, dynamic buffer, Float32Array data
+  dynamic gl, dynamic buffer, dynamic data
 ) {
   // bufferSubDataでは最初にBufferDataで指定したサイズ以上のデータを受け入れてくれないので注意
   // 最初に想定される最大サイズで初期化する必要がある
