@@ -15,11 +15,13 @@ abstract class Native {
 }
 
 class PcdVideo {
-  final List<(Float32List, Float32List)> vertices;
+  final Float32List vertices;
+  final Uint32List frameStartIndices;
   final int maxPointNum;
 
   const PcdVideo({
     required this.vertices,
+    required this.frameStartIndices,
     required this.maxPointNum,
   });
 }

@@ -48,18 +48,6 @@ class NativeImpl implements Native {
   }
 // Section: wire2api
 
-  (Float32List, Float32List) _wire2api___record__float_32_list_float_32_list(
-      dynamic raw) {
-    final arr = raw as List<dynamic>;
-    if (arr.length != 2) {
-      throw Exception('Expected 2 elements, got ${arr.length}');
-    }
-    return (
-      _wire2api_float_32_list(arr[0]),
-      _wire2api_float_32_list(arr[1]),
-    );
-  }
-
   double _wire2api_f32(dynamic raw) {
     return raw as double;
   }
@@ -68,25 +56,23 @@ class NativeImpl implements Native {
     return raw as Float32List;
   }
 
-  List<(Float32List, Float32List)>
-      _wire2api_list___record__float_32_list_float_32_list(dynamic raw) {
-    return (raw as List<dynamic>)
-        .map(_wire2api___record__float_32_list_float_32_list)
-        .toList();
-  }
-
   PcdVideo _wire2api_pcd_video(dynamic raw) {
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
     return PcdVideo(
-      vertices: _wire2api_list___record__float_32_list_float_32_list(arr[0]),
-      maxPointNum: _wire2api_usize(arr[1]),
+      vertices: _wire2api_float_32_list(arr[0]),
+      frameStartIndices: _wire2api_uint_32_list(arr[1]),
+      maxPointNum: _wire2api_u32(arr[2]),
     );
   }
 
-  int _wire2api_usize(dynamic raw) {
-    return castInt(raw);
+  int _wire2api_u32(dynamic raw) {
+    return raw as int;
+  }
+
+  Uint32List _wire2api_uint_32_list(dynamic raw) {
+    return raw as Uint32List;
   }
 }
 

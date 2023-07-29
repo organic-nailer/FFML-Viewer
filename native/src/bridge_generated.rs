@@ -70,6 +70,7 @@ impl support::IntoDart for PcdVideo {
     fn into_dart(self) -> support::DartAbi {
         vec![
             self.vertices.into_into_dart().into_dart(),
+            self.frame_start_indices.into_into_dart().into_dart(),
             self.max_point_num.into_into_dart().into_dart(),
         ]
         .into_dart()

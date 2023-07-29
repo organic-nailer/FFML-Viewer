@@ -10,17 +10,15 @@ import 'package:vector_math/vector_math.dart' show Vector3, Vector4, Matrix4;
 class PcdView extends StatefulWidget {
   final Size canvasSize;
   final Float32List vertices;
-  final Float32List colors;
   final int maxPointNum;
   final Color backgroundColor;
   const PcdView(
       {Key? key,
       required this.canvasSize,
       required this.vertices,
-      required this.colors,
       int? maxPointNum,
       this.backgroundColor = Colors.black})
-      : maxPointNum = maxPointNum ?? vertices.length ~/ 3, super(key: key);
+      : maxPointNum = maxPointNum ?? vertices.length ~/ 6, super(key: key);
 
   @override
   State<PcdView> createState() => _PcdViewState();
@@ -70,7 +68,7 @@ class _PcdViewState extends State<PcdView> {
   @override
   void didUpdateWidget(covariant PcdView oldWidget) {
     if (oldWidget.vertices != widget.vertices) {
-      updateVertices(widget.vertices, widget.colors);
+      updateVertices(widget.vertices);
     }
     if (oldWidget.canvasSize != widget.canvasSize) {
       _projectiveTransform = getProjectiveTransform(
@@ -182,7 +180,7 @@ class _PcdViewState extends State<PcdView> {
     await Future.delayed(const Duration(milliseconds: 100));
     final gl = _flutterGlPlugin.gl;
     await setupFBO();
-    await initGL(gl, widget.vertices, widget.colors);
+    await initGL(gl, widget.vertices);
   }
 
   Future<void> setupFBO() async {
@@ -228,7 +226,7 @@ class _PcdViewState extends State<PcdView> {
     final gl = _flutterGlPlugin.gl;
     final size = widget.canvasSize;
     final color = widget.backgroundColor;
-    final verticesLength = widget.vertices.length ~/ 3;
+    final verticesLength = widget.vertices.length ~/ 6;
     // set transform
     final transformLoc = gl.getUniformLocation(_glProgram, 'transform');
     final transform = _projectiveTransform *
@@ -260,10 +258,11 @@ class _PcdViewState extends State<PcdView> {
     }
   }
 
-  void updateVertices(Float32List vertices, Float32List colors) {
+  void updateVertices(Float32List vertices) {
     final gl = _flutterGlPlugin.gl;
     updateBuffer(gl, _posBuffer, vertices);
-    updateBuffer(gl, _colBuffer, colors);
+    print("Errors: ${gl.getError()}");
+    // updateBuffer(gl, _colBuffer, colors);
   }
 
   void viewZoom(double zoomNormalized, double mousePosX, double mousePosY) {
@@ -295,7 +294,7 @@ class _PcdViewState extends State<PcdView> {
     });
   }
 
-  dynamic initGL(dynamic gl, Float32List vertices, Float32List colors) {
+  dynamic initGL(dynamic gl, Float32List vertices) {
     gl.enable(0x8642); // GL_PROGRAM_POINT_SIZE
     gl.enable(gl.DEPTH_TEST);
     const vertexShaderSource = """#version ${kIsWeb ? "300 es" : "150"}
@@ -360,14 +359,18 @@ void main() {
     final vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
 
-    _posBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Position");
-    _colBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, colors, "a_Color");
+    _posBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Position", 
+      6 * Float32List.bytesPerElement, 0);
+    _colBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Color", 
+      6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
 
     // 1回だとうまく表示されないので、間をおいて再び呼び出す
     Future.delayed(const Duration(milliseconds: 100), () {
       setState(() {
-        _posBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Position");
-        _colBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, colors, "a_Color");
+        _posBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Position",
+          6 * Float32List.bytesPerElement, 0);
+        _colBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Color",
+          6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
       });
     });
   }
@@ -405,10 +408,10 @@ Matrix4 getProjectiveTransform(
 }
 
 dynamic setDataToAttribute(
-    dynamic gl, dynamic glProgram, int maxPointNum, dynamic data, String attributeName) {
+    dynamic gl, dynamic glProgram, int maxPointNum, dynamic data, String attributeName, int stride, int offset) {
   final buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  Float32Array initData = Float32Array(maxPointNum * 3);
+  Float32Array initData = Float32Array(maxPointNum * 6);
   if (kIsWeb) {
     gl.bufferData(gl.ARRAY_BUFFER, initData.length, initData, gl.DYNAMIC_DRAW);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.length);
@@ -420,7 +423,7 @@ dynamic setDataToAttribute(
   final attribute = gl.getAttribLocation(glProgram, attributeName);
   gl.enableVertexAttribArray(attribute);
   gl.vertexAttribPointer(
-      attribute, 3, gl.FLOAT, false, Float32List.bytesPerElement * 3, 0);
+      attribute, 3, gl.FLOAT, false, stride, offset);
   
 
   return buffer;

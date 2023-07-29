@@ -35,7 +35,7 @@ class _MainPageState extends State<MainPage> {
             return PcdView(
               canvasSize: canvasSize, 
               vertices: _vertices.toDartList(), 
-              colors: _colors.toDartList(),
+              // colors: _colors.toDartList(),
               maxPointNum: 29*29*29,
               backgroundColor: Colors.grey.shade900,
             );

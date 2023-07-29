@@ -7,29 +7,24 @@ import 'package:flutter/material.dart' hide Matrix4;
 import 'package:flutter_gl/flutter_gl.dart';
 import 'package:vector_math/vector_math.dart' show Vector3, Vector4, Matrix4;
 
-(Float32Array, Float32Array) genTetrahedron() {
+Float32List genTetrahedron() {
   final a = [0.0,0.5,0.5];
   final b = [-0.5,-0.5,0.5];
   final c = [0.0,0.0,-0.5];
   final d = [0.5,-0.5,0.5];
-  final vertices = Float32Array.fromList([
-    ...a, ...b, ...c,
-    ...a, ...d, ...c,
-    ...b, ...c, ...d,
-    ...a, ...b, ...d,
-  ]);
-
+  
   final white = [1.0,1.0,1.0];
   final red = [1.0,0.0,0.0];
   final green = [0.0,1.0,0.0];
   final blue = [0.0,0.0,1.0];
-  final colors = Float32Array.fromList([
-    ...white, ...white, ...white,
-    ...red, ...red, ...red,
-    ...green, ...green, ...green,
-    ...blue, ...blue, ...blue,
+
+  final vertices = Float32List.fromList([
+    ...a, ...white, ...b, ...white, ...c, ...white,
+    ...a, ...red,   ...d, ...red,   ...c, ...red,
+    ...b, ...green, ...c, ...green, ...d, ...green,
+    ...a, ...blue,  ...b, ...blue,  ...d, ...blue,
   ]);
-  return (vertices, colors);
+  return vertices;
 }
 
 (Float32Array, Float32Array) genCube(int sidePts) {
@@ -64,7 +59,7 @@ import 'package:vector_math/vector_math.dart' show Vector3, Vector4, Matrix4;
 class CubePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final (vertices, colors) = genTetrahedron();
+    final vertices = genTetrahedron();
     return Scaffold(
       body: LayoutBuilder(
         builder: ((context, constraints) {
@@ -72,7 +67,6 @@ class CubePage extends StatelessWidget {
           return CubeView(
             canvasSize: canvasSize,
             vertices: vertices,
-            colors: colors,
             maxPointNum: vertices.length ~/ 3,
             backgroundColor: Colors.grey.shade500,
           );
@@ -84,18 +78,16 @@ class CubePage extends StatelessWidget {
 
 class CubeView extends StatefulWidget {
   final Size canvasSize;
-  final Float32Array vertices;
-  final Float32Array colors;
+  final Float32List vertices;
   final int maxPointNum;
   final Color backgroundColor;
   const CubeView(
       {Key? key,
       required this.canvasSize,
       required this.vertices,
-      required this.colors,
       int? maxPointNum,
       this.backgroundColor = Colors.black})
-      : maxPointNum = maxPointNum ?? vertices.length ~/ 3, super(key: key);
+      : maxPointNum = maxPointNum ?? vertices.length ~/ 6, super(key: key);
 
   @override
   State<CubeView> createState() => _CubeViewState();
@@ -143,7 +135,7 @@ class _CubeViewState extends State<CubeView> {
   @override
   void didUpdateWidget(covariant CubeView oldWidget) {
     if (oldWidget.vertices != widget.vertices) {
-      updateVertices(widget.vertices, widget.colors);
+      updateVertices(widget.vertices);
     }
     if (oldWidget.canvasSize != widget.canvasSize) {
       _projectiveTransform = getProjectiveTransform(
@@ -207,7 +199,7 @@ class _CubeViewState extends State<CubeView> {
     await Future.delayed(const Duration(milliseconds: 100));
     final gl = _flutterGlPlugin.gl;
     await setupFBO();
-    await initGL(gl, widget.vertices, widget.colors);
+    await initGL(gl, widget.vertices);
   }
 
   Future<void> setupFBO() async {
@@ -282,13 +274,13 @@ class _CubeViewState extends State<CubeView> {
     _flutterGlPlugin.updateTexture(_sourceTexture);
   }
 
-  void updateVertices(Float32Array vertices, Float32Array colors) {
+  void updateVertices(Float32List vertices) {
     final gl = _flutterGlPlugin.gl;
     updateBuffer(gl, _posBuffer, vertices);
-    updateBuffer(gl, _colBuffer, colors);
+    // updateBuffer(gl, _colBuffer, colors);
   }
 
-  dynamic initGL(dynamic gl, Float32Array vertices, Float32Array colors) {
+  dynamic initGL(dynamic gl, Float32List vertices) {
     gl.enable(0x8642); // GL_PROGRAM_POINT_SIZE
     gl.enable(gl.DEPTH_TEST);
     const vertexShaderSource = """#version 150
@@ -353,14 +345,18 @@ void main() {
     final vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
 
-    _posBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Position");
-    _colBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, colors, "a_Color");
+    _posBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Position", 
+      6 * Float32List.bytesPerElement, 0);
+    _colBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Color", 
+      6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
 
     // 1回だとうまく表示されないので、間をおいて再び呼び出す
     Future.delayed(const Duration(milliseconds: 100), () {
       setState(() {
-        _posBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Position");
-        _colBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, colors, "a_Color");
+        _posBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Position", 
+          6 * Float32List.bytesPerElement, 0);
+        _colBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Color", 
+          6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
       });
     });
   }
@@ -398,24 +394,24 @@ Matrix4 getProjectiveTransform(
 }
 
 dynamic setDataToAttribute(
-    dynamic gl, dynamic glProgram, int maxPointNum, Float32Array data, String attributeName) {
+    dynamic gl, dynamic glProgram, int maxPointNum, Float32List data, String attributeName, int stride, int offset) {
   final buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  Float32Array initData = Float32Array(maxPointNum * 3);
+  Float32Array initData = Float32Array(maxPointNum * 6);
   gl.bufferData(gl.ARRAY_BUFFER, initData.lengthInBytes, initData, gl.DYNAMIC_DRAW);
   gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.lengthInBytes);
 
   final attribute = gl.getAttribLocation(glProgram, attributeName);
   gl.enableVertexAttribArray(attribute);
   gl.vertexAttribPointer(
-      attribute, 3, gl.FLOAT, false, Float32List.bytesPerElement * 3, 0);
+      attribute, 3, gl.FLOAT, false, stride, offset);
   
 
   return buffer;
 }
 
 void updateBuffer(
-  dynamic gl, dynamic buffer, Float32Array data
+  dynamic gl, dynamic buffer, Float32List data
 ) {
   // bufferSubDataでは最初にBufferDataで指定したサイズ以上のデータを受け入れてくれないので注意
   // 最初に想定される最大サイズで初期化する必要がある

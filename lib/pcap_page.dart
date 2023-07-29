@@ -22,7 +22,7 @@ class _PcapPageState extends State<PcapPage> {
   int maxFrameNum = 0;
   late int maxPointNum;
   // List<List<VeloPoint>> frames = [];
-  List<(Float32List, Float32List)> _vertices = [];
+  List<Float32List> _vertices = [];
 
   @override
   Widget build(BuildContext context) {
@@ -35,8 +35,7 @@ class _PcapPageState extends State<PcapPage> {
                 _vertices.isNotEmpty ? Positioned.fill(
                   child: PcdView(
                     canvasSize: canvasSize, 
-                    vertices: _vertices[selectedFrame].$1,
-                    colors: _vertices[selectedFrame].$2,
+                    vertices: _vertices[selectedFrame],
                     backgroundColor: Colors.grey.shade600,
                     maxPointNum: maxPointNum,
                   ),
@@ -92,13 +91,21 @@ class _PcapPageState extends State<PcapPage> {
             final videoData = await api.readPcap(path: path);
             stopwatch.stop();
             print("read pcap took ${stopwatch.elapsedMilliseconds}ms");
-            print("loaded ${videoData.vertices.length} frames");
+            print("loaded ${videoData.frameStartIndices.length} frames");
             print("max point num: ${videoData.maxPointNum}");
+            final newVertices = <Float32List>[];
+            for (var i = 0; i < videoData.frameStartIndices.length; i++) {
+              final start = videoData.frameStartIndices[i];
+              final end = i == videoData.frameStartIndices.length - 1 ? videoData.vertices.length : videoData.frameStartIndices[i + 1];
+              newVertices.add(videoData.vertices.sublist(start, end));
+            }
             setState(() {
-              _vertices = videoData.vertices;
-              maxFrameNum = videoData.vertices.length - 1;
+              _vertices = newVertices;
+              maxFrameNum = videoData.frameStartIndices.length - 1;
               maxPointNum = videoData.maxPointNum;
             });
+            print(_vertices[1].length);
+            print(_vertices[1].sublist(0, 10));
             // final parser = HesaiPcapParser(file);
             // await parser.readPcap();
 

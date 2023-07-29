@@ -1,13 +1,15 @@
 use std::fs::File;
 use pcap_parser::*;
 use pcap_parser::traits::PcapReaderIterator;
+use crate::pcap_parser::framewriter::FrameWriter;
 use crate::pcap_parser::vertexwriter::VertexWriter;
 
 use super::pcap_parser::parse_packet_body;
 
 pub struct PcdVideo {
-    pub vertices: Vec<(Vec<f32>, Vec<f32>)>,
-    pub max_point_num: usize,
+    pub vertices: Vec<f32>,
+    pub frame_start_indices: Vec<u32>,
+    pub max_point_num: u32,
 }
 
 pub fn read_pcap(path: String) -> PcdVideo {
@@ -44,10 +46,15 @@ pub fn read_pcap(path: String) -> PcdVideo {
             Err(err) => panic!("packet read failed: {:?}", err),
         }
     }
+    writer.finalize();
 
     println!("elapsed in rust: {} ms", start.elapsed().as_millis());
 
-    PcdVideo { vertices: writer.result, max_point_num: writer.max_point_num }
+    PcdVideo { 
+        vertices: writer.buffer, 
+        frame_start_indices: writer.frame_start_indices,
+        max_point_num: writer.max_point_num
+    }
 }
 
 #[cfg(test)]
