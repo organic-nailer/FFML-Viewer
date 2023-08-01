@@ -26,21 +26,24 @@ class NativeImpl implements Native {
   factory NativeImpl.wasm(FutureOr<WasmModule> module) =>
       NativeImpl(module as ExternalLibrary);
   NativeImpl.raw(this._platform);
-  Future<PcdVideo> readPcap({required String path, dynamic hint}) {
+  Stream<PcdFragment> readPcapStream(
+      {required String path, required int framesPerFragment, dynamic hint}) {
     var arg0 = _platform.api2wire_String(path);
-    return _platform.executeNormal(FlutterRustBridgeTask(
-      callFfi: (port_) => _platform.inner.wire_read_pcap(port_, arg0),
-      parseSuccessData: _wire2api_pcd_video,
-      constMeta: kReadPcapConstMeta,
-      argValues: [path],
+    var arg1 = api2wire_u32(framesPerFragment);
+    return _platform.executeStream(FlutterRustBridgeTask(
+      callFfi: (port_) =>
+          _platform.inner.wire_read_pcap_stream(port_, arg0, arg1),
+      parseSuccessData: _wire2api_pcd_fragment,
+      constMeta: kReadPcapStreamConstMeta,
+      argValues: [path, framesPerFragment],
       hint: hint,
     ));
   }
 
-  FlutterRustBridgeTaskConstMeta get kReadPcapConstMeta =>
+  FlutterRustBridgeTaskConstMeta get kReadPcapStreamConstMeta =>
       const FlutterRustBridgeTaskConstMeta(
-        debugName: "read_pcap",
-        argNames: ["path"],
+        debugName: "read_pcap_stream",
+        argNames: ["path", "framesPerFragment"],
       );
 
   void dispose() {
@@ -56,11 +59,11 @@ class NativeImpl implements Native {
     return raw as Float32List;
   }
 
-  PcdVideo _wire2api_pcd_video(dynamic raw) {
+  PcdFragment _wire2api_pcd_fragment(dynamic raw) {
     final arr = raw as List<dynamic>;
     if (arr.length != 3)
       throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
-    return PcdVideo(
+    return PcdFragment(
       vertices: _wire2api_float_32_list(arr[0]),
       frameStartIndices: _wire2api_uint_32_list(arr[1]),
       maxPointNum: _wire2api_u32(arr[2]),
@@ -77,6 +80,11 @@ class NativeImpl implements Native {
 }
 
 // Section: api2wire
+
+@protected
+int api2wire_u32(int raw) {
+  return raw;
+}
 
 @protected
 int api2wire_u8(int raw) {
@@ -202,22 +210,24 @@ class NativeWire implements FlutterRustBridgeWireBase {
   late final _init_frb_dart_api_dl = _init_frb_dart_api_dlPtr
       .asFunction<int Function(ffi.Pointer<ffi.Void>)>();
 
-  void wire_read_pcap(
+  void wire_read_pcap_stream(
     int port_,
     ffi.Pointer<wire_uint_8_list> path,
+    int frames_per_fragment,
   ) {
-    return _wire_read_pcap(
+    return _wire_read_pcap_stream(
       port_,
       path,
+      frames_per_fragment,
     );
   }
 
-  late final _wire_read_pcapPtr = _lookup<
+  late final _wire_read_pcap_streamPtr = _lookup<
       ffi.NativeFunction<
-          ffi.Void Function(
-              ffi.Int64, ffi.Pointer<wire_uint_8_list>)>>('wire_read_pcap');
-  late final _wire_read_pcap = _wire_read_pcapPtr
-      .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>)>();
+          ffi.Void Function(ffi.Int64, ffi.Pointer<wire_uint_8_list>,
+              ffi.Uint32)>>('wire_read_pcap_stream');
+  late final _wire_read_pcap_stream = _wire_read_pcap_streamPtr
+      .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>, int)>();
 
   ffi.Pointer<wire_uint_8_list> new_uint_8_list_0(
     int len,

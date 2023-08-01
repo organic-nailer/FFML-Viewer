@@ -22,16 +22,27 @@ use std::sync::Arc;
 
 // Section: wire functions
 
-fn wire_read_pcap_impl(port_: MessagePort, path: impl Wire2Api<String> + UnwindSafe) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap::<_, _, _, PcdVideo>(
+fn wire_read_pcap_stream_impl(
+    port_: MessagePort,
+    path: impl Wire2Api<String> + UnwindSafe,
+    frames_per_fragment: impl Wire2Api<u32> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap::<_, _, _, ()>(
         WrapInfo {
-            debug_name: "read_pcap",
+            debug_name: "read_pcap_stream",
             port: Some(port_),
-            mode: FfiCallMode::Normal,
+            mode: FfiCallMode::Stream,
         },
         move || {
             let api_path = path.wire2api();
-            move |task_callback| Ok(read_pcap(api_path))
+            let api_frames_per_fragment = frames_per_fragment.wire2api();
+            move |task_callback| {
+                Ok(read_pcap_stream(
+                    task_callback.stream_sink::<_, PcdFragment>(),
+                    api_path,
+                    api_frames_per_fragment,
+                ))
+            }
         },
     )
 }
@@ -58,6 +69,11 @@ where
     }
 }
 
+impl Wire2Api<u32> for u32 {
+    fn wire2api(self) -> u32 {
+        self
+    }
+}
 impl Wire2Api<u8> for u8 {
     fn wire2api(self) -> u8 {
         self
@@ -66,7 +82,7 @@ impl Wire2Api<u8> for u8 {
 
 // Section: impl IntoDart
 
-impl support::IntoDart for PcdVideo {
+impl support::IntoDart for PcdFragment {
     fn into_dart(self) -> support::DartAbi {
         vec![
             self.vertices.into_into_dart().into_dart(),
@@ -76,8 +92,8 @@ impl support::IntoDart for PcdVideo {
         .into_dart()
     }
 }
-impl support::IntoDartExceptPrimitive for PcdVideo {}
-impl rust2dart::IntoIntoDart<PcdVideo> for PcdVideo {
+impl support::IntoDartExceptPrimitive for PcdFragment {}
+impl rust2dart::IntoIntoDart<PcdFragment> for PcdFragment {
     fn into_into_dart(self) -> Self {
         self
     }

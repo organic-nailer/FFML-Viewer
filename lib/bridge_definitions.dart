@@ -9,17 +9,18 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge.dart';
 import 'package:uuid/uuid.dart';
 
 abstract class Native {
-  Future<PcdVideo> readPcap({required String path, dynamic hint});
+  Stream<PcdFragment> readPcapStream(
+      {required String path, required int framesPerFragment, dynamic hint});
 
-  FlutterRustBridgeTaskConstMeta get kReadPcapConstMeta;
+  FlutterRustBridgeTaskConstMeta get kReadPcapStreamConstMeta;
 }
 
-class PcdVideo {
+class PcdFragment {
   final Float32List vertices;
   final Uint32List frameStartIndices;
   final int maxPointNum;
 
-  const PcdVideo({
+  const PcdFragment({
     required this.vertices,
     required this.frameStartIndices,
     required this.maxPointNum,

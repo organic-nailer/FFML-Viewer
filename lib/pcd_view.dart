@@ -67,6 +67,7 @@ class _PcdViewState extends State<PcdView> {
 
   @override
   void didUpdateWidget(covariant PcdView oldWidget) {
+    if (!_flutterGlPlugin.isInitialized) return;
     if (oldWidget.vertices != widget.vertices) {
       updateVertices(widget.vertices);
     }
@@ -261,7 +262,6 @@ class _PcdViewState extends State<PcdView> {
   void updateVertices(Float32List vertices) {
     final gl = _flutterGlPlugin.gl;
     updateBuffer(gl, _posBuffer, vertices);
-    print("Errors: ${gl.getError()}");
     // updateBuffer(gl, _colBuffer, colors);
   }
 

@@ -1,6 +1,9 @@
+use crate::api::PcdFragment;
+
 use super::{framewriter::FrameWriter, velopoint::VeloPoint};
 use std::cmp::max;
 use colorgrad;
+use flutter_rust_bridge::StreamSink;
 
 pub struct VertexWriter {
     pub buffer: Vec<f32>,
@@ -8,18 +11,34 @@ pub struct VertexWriter {
     pub max_point_num: u32,
     previous_azimuth: u16,
     colormap: colorgrad::Gradient,
+    frames_per_fragment: u32,
+    stream: StreamSink<PcdFragment>,
 }
 
 impl VertexWriter {
-    pub fn create() -> Self {
+    pub fn create(frames_per_fragment: u32, stream: StreamSink<PcdFragment>) -> Self {
         let colormap = colorgrad::turbo();
         Self {
             buffer: Vec::new(),
-            frame_start_indices: Vec::new(),
+            frame_start_indices: vec![0],
             max_point_num: 0,
             previous_azimuth: 0,
             colormap,
+            frames_per_fragment,
+            stream,
         }
+    }
+
+    pub fn sink(&mut self) {
+        let fragment = PcdFragment {
+            vertices: self.buffer.clone(),
+            frame_start_indices: self.frame_start_indices.clone(),
+            max_point_num: self.max_point_num,
+        };
+        self.stream.add(fragment);
+        self.buffer.clear();
+        self.frame_start_indices.clear();
+        self.max_point_num = 0;
     }
 }
 
@@ -29,7 +48,12 @@ impl FrameWriter for VertexWriter {
             let point_num_bytes = self.buffer.len() as u32 - self.frame_start_indices.last().unwrap_or(&0);
             if point_num_bytes > 0 {
                 self.max_point_num = max(self.max_point_num, point_num_bytes / 6);
-                self.frame_start_indices.push(self.buffer.len() as u32);
+                if self.frame_start_indices.len() as u32 == self.frames_per_fragment {
+                    self.sink();
+                }
+                else {
+                    self.frame_start_indices.push(self.buffer.len() as u32);
+                }
             }
         }
         self.previous_azimuth = row.azimuth;
@@ -45,7 +69,8 @@ impl FrameWriter for VertexWriter {
         let point_num_bytes = self.buffer.len() as u32 - self.frame_start_indices.last().unwrap_or(&0);
         if point_num_bytes > 0 {
             self.max_point_num = max(self.max_point_num, point_num_bytes / 6);
-            self.frame_start_indices.push(self.buffer.len() as u32);
+            // self.frame_start_indices.push(self.buffer.len() as u32);
+            self.sink();
         }
     }
 
