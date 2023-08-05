@@ -30,6 +30,7 @@ class _PcdViewState extends State<PcdView> {
   late dynamic _sourceTexture;
   late dynamic _glProgram;
   late dynamic _vertexBuffer;
+  late dynamic _vao;
   late Future<void> _glFuture;
   final Matrix4 _viewingTransform = getViewingTransform(
     Vector3(0, 0, 3),
@@ -252,7 +253,10 @@ class _PcdViewState extends State<PcdView> {
     gl.clearColor(color.red / 255, color.green / 255, color.blue / 255, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     // gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+    gl.bindVertexArray(_vao);
     gl.drawArrays(gl.POINTS, 0, verticesLength);
+    gl.bindVertexArray(0);
 
     gl.finish();
 
@@ -365,26 +369,21 @@ void main() {
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices, 0, vertices.lengthInBytes);
     }
 
-    final vao = gl.createVertexArray();
-    gl.bindVertexArray(vao);
-
-    final attrPos = gl.getAttribLocation(_glProgram, "a_Position");
-    gl.enableVertexAttribArray(attrPos);
-    gl.vertexAttribPointer(attrPos, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
-    final attrCol = gl.getAttribLocation(_glProgram, "a_Color");
-    gl.enableVertexAttribArray(attrCol);
-    gl.vertexAttribPointer(attrCol, 3, gl.FLOAT, false, 
-      6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
-
-    // 1回だとうまく表示されないので、間をおいて再び呼び出す
-    Future.delayed(const Duration(milliseconds: 100), () {
-      setState(() {
-        gl.vertexAttribPointer(attrPos, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
-        gl.vertexAttribPointer(attrCol, 3, gl.FLOAT, false, 
-          6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
-        
-      });
-    });
+    _vao = gl.createVertexArray();
+    gl.bindVertexArray(_vao); {
+      // なぜかこの順番で呼ぶと動く
+      final attrPos = gl.getAttribLocation(_glProgram, "a_Position");
+      final attrCol = gl.getAttribLocation(_glProgram, "a_Color");
+      gl.bindBuffer(gl.ARRAY_BUFFER, _vertexBuffer);
+      gl.vertexAttribPointer(attrPos, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
+      gl.enableVertexAttribArray(attrPos);
+      gl.vertexAttribPointer(attrCol, 3, gl.FLOAT, false, 
+        6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
+      gl.enableVertexAttribArray(attrCol);
+      gl.vertexAttribPointer(attrPos, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
+      gl.vertexAttribPointer(attrCol, 3, gl.FLOAT, false, 
+        6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
+    } gl.bindVertexArray(0);
   }
 }
 

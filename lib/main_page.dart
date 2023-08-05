@@ -35,7 +35,7 @@ class _MainPageState extends State<MainPage> {
               vertices: _vertices, 
               // colors: _colors.toDartList(),
               maxPointNum: 29*29*29,
-              backgroundColor: Colors.grey.shade900,
+              backgroundColor: Colors.grey,
             );
           }
         ),
