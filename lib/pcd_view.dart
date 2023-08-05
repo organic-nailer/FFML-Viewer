@@ -29,8 +29,7 @@ class _PcdViewState extends State<PcdView> {
   late dynamic _defaultFrameBuffer;
   late dynamic _sourceTexture;
   late dynamic _glProgram;
-  late dynamic _posBuffer;
-  late dynamic _colBuffer;
+  late dynamic _vertexBuffer;
   late Future<void> _glFuture;
   final Matrix4 _viewingTransform = getViewingTransform(
     Vector3(0, 0, 3),
@@ -194,17 +193,18 @@ class _PcdViewState extends State<PcdView> {
     final width = widget.canvasSize.width.toInt();
     final height = widget.canvasSize.height.toInt();
 
+    // create default FBO
     _defaultFrameBuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, _defaultFrameBuffer);
+
+    // create default texture
     final defaultFrameBufferTexture = gl.createTexture();
     gl.activeTexture(gl.TEXTURE0);
-
     gl.bindTexture(gl.TEXTURE_2D, defaultFrameBufferTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA,
         gl.UNSIGNED_BYTE, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, _defaultFrameBuffer);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D,
         defaultFrameBufferTexture, 0);
 
@@ -236,14 +236,16 @@ class _PcdViewState extends State<PcdView> {
         rotOriginTransform;
     gl.uniformMatrix4fv(transformLoc, false, transform.storage);
 
-    // workaround for web: HTMLのcanvasの属性(width, height)を変更しないと、
-    // WebGLの描画バッファの大きさが変わらないため、表示がおかしくなる
-    // 参考: https://maku77.github.io/js/canvas/size.html
-    final htmlCanvas = html.document.getElementById("canvas-id");
-    if (htmlCanvas != null) {
-      htmlCanvas as html.CanvasElement;
-      htmlCanvas.width = size.width.toInt();
-      htmlCanvas.height = size.height.toInt();
+    if (kIsWeb) {
+      // workaround for web: HTMLのcanvasの属性(width, height)を変更しないと、
+      // WebGLの描画バッファの大きさが変わらないため、表示がおかしくなる
+      // 参考: https://maku77.github.io/js/canvas/size.html
+      final htmlCanvas = html.document.getElementById("canvas-id");
+      if (htmlCanvas != null) {
+        htmlCanvas as html.CanvasElement;
+        htmlCanvas.width = size.width.toInt();
+        htmlCanvas.height = size.height.toInt();
+      }
     }
 
     gl.viewport(0, 0, size.width.toInt(), size.height.toInt());
@@ -261,8 +263,7 @@ class _PcdViewState extends State<PcdView> {
 
   void updateVertices(Float32List vertices) {
     final gl = _flutterGlPlugin.gl;
-    updateBuffer(gl, _posBuffer, vertices);
-    // updateBuffer(gl, _colBuffer, colors);
+    updateBuffer(gl, _vertexBuffer, vertices);
   }
 
   void viewZoom(double zoomNormalized, double mousePosX, double mousePosY) {
@@ -327,20 +328,18 @@ void main() {
     gl.shaderSource(vertexShader, vertexShaderSource);
     gl.compileShader(vertexShader);
 
-    var _res = gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS);
-    if (_res == 0 || _res == false) {
-      print("Error compiling shader: ${gl.getShaderInfoLog(vertexShader)}");
-      return;
+    var res = gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS);
+    if (res == 0 || res == false) {
+      throw Exception("Error compiling shader: ${gl.getShaderInfoLog(vertexShader)}");
     }
 
     final fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
     gl.shaderSource(fragmentShader, fragmentShaderSource);
     gl.compileShader(fragmentShader);
 
-    _res = gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS);
-    if (_res == 0 || _res == false) {
-      print("Error compiling shader: ${gl.getShaderInfoLog(fragmentShader)}");
-      return;
+    res = gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS);
+    if (res == 0 || res == false) {
+      throw Exception("Error compiling shader: ${gl.getShaderInfoLog(fragmentShader)}");
     }
 
     _glProgram = gl.createProgram();
@@ -348,29 +347,42 @@ void main() {
     gl.attachShader(_glProgram, fragmentShader);
     gl.linkProgram(_glProgram);
 
-    _res = gl.getProgramParameter(_glProgram, gl.LINK_STATUS);
-    print(" initShaders LINK_STATUS _res: ${_res} ");
-    if (_res == false || _res == 0) {
-      print("Unable to initialize the shader program");
+    res = gl.getProgramParameter(_glProgram, gl.LINK_STATUS);
+    if (res == false || res == 0) {
+      throw Exception("Unable to initialize the shader program");
     }
 
     gl.useProgram(_glProgram);
 
+    _vertexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, _vertexBuffer);
+    Float32Array initData = Float32Array(widget.maxPointNum * 6);
+    if (kIsWeb) {
+      gl.bufferData(gl.ARRAY_BUFFER, initData.length, initData, gl.DYNAMIC_DRAW);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices, 0, vertices.length);
+    } else {
+      gl.bufferData(gl.ARRAY_BUFFER, initData.lengthInBytes, initData, gl.DYNAMIC_DRAW);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices, 0, vertices.lengthInBytes);
+    }
+
     final vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
 
-    _posBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Position", 
-      6 * Float32List.bytesPerElement, 0);
-    _colBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Color", 
+    final attrPos = gl.getAttribLocation(_glProgram, "a_Position");
+    gl.enableVertexAttribArray(attrPos);
+    gl.vertexAttribPointer(attrPos, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
+    final attrCol = gl.getAttribLocation(_glProgram, "a_Color");
+    gl.enableVertexAttribArray(attrCol);
+    gl.vertexAttribPointer(attrCol, 3, gl.FLOAT, false, 
       6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
 
     // 1回だとうまく表示されないので、間をおいて再び呼び出す
     Future.delayed(const Duration(milliseconds: 100), () {
       setState(() {
-        _posBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Position",
-          6 * Float32List.bytesPerElement, 0);
-        _colBuffer = setDataToAttribute(gl, _glProgram, widget.maxPointNum, vertices, "a_Color",
+        gl.vertexAttribPointer(attrPos, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
+        gl.vertexAttribPointer(attrCol, 3, gl.FLOAT, false, 
           6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
+        
       });
     });
   }
@@ -405,28 +417,6 @@ Matrix4 getProjectiveTransform(
     0         , 0, z, w,
     0         , 0,-1, 0,
   ).transposed();
-}
-
-dynamic setDataToAttribute(
-    dynamic gl, dynamic glProgram, int maxPointNum, dynamic data, String attributeName, int stride, int offset) {
-  final buffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  Float32Array initData = Float32Array(maxPointNum * 6);
-  if (kIsWeb) {
-    gl.bufferData(gl.ARRAY_BUFFER, initData.length, initData, gl.DYNAMIC_DRAW);
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.length);
-  } else {
-    gl.bufferData(gl.ARRAY_BUFFER, initData.lengthInBytes, initData, gl.DYNAMIC_DRAW);
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.lengthInBytes);
-  }
-
-  final attribute = gl.getAttribLocation(glProgram, attributeName);
-  gl.enableVertexAttribArray(attribute);
-  gl.vertexAttribPointer(
-      attribute, 3, gl.FLOAT, false, stride, offset);
-  
-
-  return buffer;
 }
 
 void updateBuffer(

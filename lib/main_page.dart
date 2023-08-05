@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
@@ -14,16 +15,13 @@ class MainPage extends StatefulWidget {
 }
 
 class _MainPageState extends State<MainPage> {
-  late Float32Array _vertices;
-  late Float32Array _colors;
+  late Float32List _vertices;
   int counter = 0;
 
   @override
   void initState() {
     super.initState();
-    final cube = genCube(5);
-    _vertices = cube.$1;
-    _colors = cube.$2;
+    _vertices = genCube(10);
   }
 
   @override
@@ -34,7 +32,7 @@ class _MainPageState extends State<MainPage> {
             final canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
             return PcdView(
               canvasSize: canvasSize, 
-              vertices: _vertices.toDartList(), 
+              vertices: _vertices, 
               // colors: _colors.toDartList(),
               maxPointNum: 29*29*29,
               backgroundColor: Colors.grey.shade900,
@@ -46,9 +44,7 @@ class _MainPageState extends State<MainPage> {
           onPressed: () async {
             final pointCloud = genCube(Random().nextInt(20) + 10);
             setState(() {
-              _vertices = pointCloud.$1;
-              _colors = pointCloud.$2;
-              counter++;
+              _vertices = pointCloud;
             });
             // const typeGroup = XTypeGroup(
             //   label: "point cloud",
@@ -71,50 +67,21 @@ class _MainPageState extends State<MainPage> {
   }
 }
 
-(Float32Array, Float32Array) genCube(int sidePts) {
+Float32List genCube(int sidePts) {
   // x y z
-  final resultXYZ = Float32Array(sidePts * sidePts * sidePts * 3);
+  final result = Float32List(sidePts * sidePts * sidePts * 6);
   for (var x = 0; x < sidePts; x++) {
     for (var y = 0; y < sidePts; y++) {
       for (var z = 0; z < sidePts; z++) {
         final index = x * sidePts * sidePts + y * sidePts + z;
-        resultXYZ[index * 3 + 0] = x / (sidePts - 1) - 0.5;
-        resultXYZ[index * 3 + 1] = y / (sidePts - 1) - 0.5;
-        resultXYZ[index * 3 + 2] = z / (sidePts - 1) - 0.5;
+        result[index * 6 + 0] = x / (sidePts - 1) - 0.5;
+        result[index * 6 + 1] = y / (sidePts - 1) - 0.5;
+        result[index * 6 + 2] = z / (sidePts - 1) - 0.5;
+        result[index * 6 + 3] = x / (sidePts - 1);
+        result[index * 6 + 4] = y / (sidePts - 1);
+        result[index * 6 + 5] = z / (sidePts - 1);
       }
     }
   }
-  // r g b
-  final resultRGB = Float32Array(sidePts * sidePts * sidePts * 3);
-  for (var x = 0; x < sidePts; x++) {
-    for (var y = 0; y < sidePts; y++) {
-      for (var z = 0; z < sidePts; z++) {
-        final index = x * sidePts * sidePts + y * sidePts + z;
-        resultRGB[index * 3 + 0] = x / (sidePts - 1);
-        resultRGB[index * 3 + 1] = y / (sidePts - 1);
-        resultRGB[index * 3 + 2] = z / (sidePts - 1);
-      }
-    }
-  }
-  print("done");
-  return (resultXYZ, resultRGB);
-}
-
-(Float32Array, Float32Array) readVeloCsv(String content) {
-  final table = const CsvToListConverter().convert(content);
-  final pointLen = table.length - 1;
-  final resultXYZ = Float32Array(pointLen * 3);
-  final resultRGB = Float32Array(pointLen * 3);
-  final cmap = Colormaps.turbo;
-  for (var i = 1; i < table.length; i++) {
-    final row = table[i];
-    resultXYZ[(i - 1) * 3 + 0] = row[7];
-    resultXYZ[(i - 1) * 3 + 1] = row[8];
-    resultXYZ[(i - 1) * 3 + 2] = row[9];
-    final color = cmap(row[0] / 255);
-    resultRGB[(i - 1) * 3 + 0] = color.r;
-    resultRGB[(i - 1) * 3 + 1] = color.g;
-    resultRGB[(i - 1) * 3 + 2] = color.b;
-  }
-  return (resultXYZ, resultRGB);
+  return result;
 }
