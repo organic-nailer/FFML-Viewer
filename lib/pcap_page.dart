@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_pcd/ffi.dart';
 import 'package:flutter_pcd/pcap_manager.dart';
 import 'package:flutter_pcd/pcd_view.dart';
+import 'package:path_provider/path_provider.dart';
 
 class PcapPage extends StatefulWidget {
   const PcapPage({Key? key}) : super(key: key);
@@ -43,15 +44,14 @@ class _PcapPageState extends State<PcapPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text("frame: $selectedFrame/${_pcapManager!.length}", style: const TextStyle(color: Colors.amber),),
                       Container(
                         width: 500,
                         height: 50,
                         child: Slider(
                           value: selectedFrame.toDouble(),
                           min: 0,
-                          max: _pcapManager!.length.toDouble(),
-                          divisions: _pcapManager!.length,
+                          max: _pcapManager!.length - 1,
+                          divisions: _pcapManager!.length - 1,
                           onChanged: (value) {
                             setState(() {
                               selectedFrame = value.toInt();
@@ -84,11 +84,16 @@ class _PcapPageState extends State<PcapPage> {
               return;
             }
             final path = file.path;
-            _pcapManager = PcapManager("", path);
+            final tempDir = await getTemporaryDirectory();
+            _pcapManager = PcapManager(tempDir.path);
             _pcapManager!.addListener(() {
-              print("pcapManager changed ${_pcapManager!.length}");
               setState(() { });
             });
+            final success = await _pcapManager!.run(path);
+            if (!success) {
+              print("failed to run pcap manager");
+              return;
+            }
             // final stopwatch = Stopwatch()..start();
             // final videoData = await api.readPcap(path: path);
             // stopwatch.stop();

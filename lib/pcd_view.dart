@@ -34,6 +34,7 @@ class _PcdViewState extends State<PcdView> {
   late dynamic _vaoGrid;
   late int _gridPointNum;
   late Future<void> _glFuture;
+  bool _isInitialized = false;
   final Matrix4 _viewingTransform = getViewingTransform(
     Vector3(0, 0, 3),
     Vector3(0, 0, 0),
@@ -69,7 +70,7 @@ class _PcdViewState extends State<PcdView> {
 
   @override
   void didUpdateWidget(covariant PcdView oldWidget) {
-    if (!_flutterGlPlugin.isInitialized) return;
+    if (!_flutterGlPlugin.isInitialized || !_isInitialized) return;
     if (oldWidget.vertices != widget.vertices) {
       updateVertices(widget.vertices);
     }
@@ -184,6 +185,7 @@ class _PcdViewState extends State<PcdView> {
     final gl = _flutterGlPlugin.gl;
     await setupFBO();
     await initGL(gl, widget.vertices);
+    _isInitialized = true;
   }
 
   Future<void> setupFBO() async {

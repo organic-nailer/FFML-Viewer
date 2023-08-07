@@ -38,6 +38,7 @@ impl VertexWriter {
         self.stream.add(fragment);
         self.buffer.clear();
         self.frame_start_indices.clear();
+        self.frame_start_indices.push(0);
         self.max_point_num = 0;
     }
 }
