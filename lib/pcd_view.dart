@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
-import 'package:universal_html/html.dart' as html;
 
 import 'package:flutter/gestures.dart' hide Matrix4;
 import 'package:flutter/material.dart' hide Matrix4;
@@ -26,7 +25,7 @@ class PcdView extends StatefulWidget {
 
 class _PcdViewState extends State<PcdView> {
   late FlutterGlPlugin _flutterGlPlugin;
-  late dynamic _defaultFrameBuffer;
+  late dynamic _frameBuffer;
   late dynamic _sourceTexture;
   late dynamic _glProgram;
   late dynamic _vertexBuffer;
@@ -81,6 +80,7 @@ class _PcdViewState extends State<PcdView> {
         -0.01,
         -600,
       );
+      updateFBO(widget.canvasSize);
     }
     super.didUpdateWidget(oldWidget);
   }
@@ -188,6 +188,39 @@ class _PcdViewState extends State<PcdView> {
     _isInitialized = true;
   }
 
+  Future<void> updateFBO(Size size) async {
+    // FlutterGlPlatform.instance.prepareContext();
+    final gl = _flutterGlPlugin.gl;
+    final width = size.width.toInt();
+    final height = size.height.toInt();
+
+    // recreate FBO
+    _frameBuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, _frameBuffer);
+
+    final colorTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, colorTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA,
+        gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
+
+    final depthRBO = gl.createRenderbuffer();
+    gl.bindRenderbuffer(gl.RENDERBUFFER, depthRBO);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthRBO);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, 0);
+
+    _sourceTexture = colorTexture;
+
+    await _flutterGlPlugin.updateSize({
+      "width": width,
+      "height": height,
+    });
+  }
+
   Future<void> setupFBO() async {
     if (kIsWeb) return;
 
@@ -199,33 +232,25 @@ class _PcdViewState extends State<PcdView> {
     final height = widget.canvasSize.height.toInt();
 
     // create default FBO
-    _defaultFrameBuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, _defaultFrameBuffer);
+    _frameBuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, _frameBuffer);
 
-    // create default texture
-    final defaultFrameBufferTexture = gl.createTexture();
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, defaultFrameBufferTexture);
+    final colorTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, colorTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA,
         gl.UNSIGNED_BYTE, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D,
-        defaultFrameBufferTexture, 0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
 
-    // bind depth texture
-    final depthTexture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, depthTexture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); // Required for non-power-of-2 textures
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE); // Required for non-power-of-2 textures
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.DEPTH_COMPONENT, width, height, 0,
-        gl.DEPTH_COMPONENT, gl.UNSIGNED_SHORT, null);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT,
-        gl.TEXTURE_2D, depthTexture, 0);
+    final depthRBO = gl.createRenderbuffer();
+    gl.bindRenderbuffer(gl.RENDERBUFFER, depthRBO);
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthRBO);
 
-    _sourceTexture = defaultFrameBufferTexture;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, 0);
+
+    _sourceTexture = colorTexture;
   }
 
   void render() async {
@@ -241,17 +266,7 @@ class _PcdViewState extends State<PcdView> {
         rotOriginTransform;
     gl.uniformMatrix4fv(transformLoc, false, transform.storage);
 
-    if (kIsWeb) {
-      // workaround for web: HTMLのcanvasの属性(width, height)を変更しないと、
-      // WebGLの描画バッファの大きさが変わらないため、表示がおかしくなる
-      // 参考: https://maku77.github.io/js/canvas/size.html
-      final htmlCanvas = html.document.getElementById("canvas-id");
-      if (htmlCanvas != null) {
-        htmlCanvas as html.CanvasElement;
-        htmlCanvas.width = size.width.toInt();
-        htmlCanvas.height = size.height.toInt();
-      }
-    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, _frameBuffer);
 
     gl.viewport(0, 0, size.width.toInt(), size.height.toInt());
     gl.clearColor(color.red / 255, color.green / 255, color.blue / 255, 1);
@@ -266,6 +281,8 @@ class _PcdViewState extends State<PcdView> {
     gl.bindVertexArray(_vao);
     gl.drawArrays(gl.POINTS, 0, verticesLength);
     gl.bindVertexArray(0);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, 0);
 
     gl.finish();
 
@@ -364,6 +381,9 @@ void main() {
     if (res == false || res == 0) {
       throw Exception("Unable to initialize the shader program");
     }
+
+    gl.deleteShader(vertexShader);
+    gl.deleteShader(fragmentShader);
 
     gl.useProgram(_glProgram);
 

@@ -19,8 +19,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      // home: const MainPage(),
-      home: const PcapPage()
+      home: const MainPage(),
+      // home: const PcapPage()
       // home: CubePage(),
       // home: const StoreFilePage(),
     );

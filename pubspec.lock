@@ -353,10 +353,11 @@ packages:
   flutter_gl:
     dependency: "direct main"
     description:
-      name: flutter_gl
-      sha256: de74c88f77228f47dd280e2092b50eb49fe1fc008de74047d195a27f2db0b491
-      url: "https://pub.dev"
-    source: hosted
+      path: flutter_gl
+      ref: main
+      resolved-ref: "6e5c58694e17ac4bfa00d1f11e11a8aa9cb1b8b9"
+      url: "https://github.com/organic-nailer/flutter_gl"
+    source: git
     version: "0.0.21"
   flutter_gl_macos:
     dependency: transitive
@@ -367,12 +368,13 @@ packages:
     source: hosted
     version: "0.0.5"
   flutter_gl_platform_interface:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: flutter_gl_platform_interface
-      sha256: "03062491fac26d0fda80703e4a01894ecc4fec4f7e5cec131ef021fbf46b2fda"
-      url: "https://pub.dev"
-    source: hosted
+      path: flutter_gl_platform_interface
+      ref: main
+      resolved-ref: "6e5c58694e17ac4bfa00d1f11e11a8aa9cb1b8b9"
+      url: "https://github.com/organic-nailer/flutter_gl"
+    source: git
     version: "0.0.4"
   flutter_gl_web:
     dependency: transitive
@@ -383,12 +385,13 @@ packages:
     source: hosted
     version: "0.0.5"
   flutter_gl_windows:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: flutter_gl_windows
-      sha256: cd9259fb8178863de9e667129f73447fa174447a3c4abd16defa07af648850e4
-      url: "https://pub.dev"
-    source: hosted
+      path: flutter_gl_windows
+      ref: main
+      resolved-ref: "6e5c58694e17ac4bfa00d1f11e11a8aa9cb1b8b9"
+      url: "https://github.com/organic-nailer/flutter_gl"
+    source: git
     version: "0.0.4"
   flutter_lints:
     dependency: "direct dev"

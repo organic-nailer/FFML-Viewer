@@ -11,7 +11,11 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.2
   vector_math: ^2.1.4
-  flutter_gl: ^0.0.20
+  flutter_gl:
+    git: 
+      url: https://github.com/organic-nailer/flutter_gl
+      ref: main
+      path: flutter_gl/
   file_selector: ^1.0.0
   csv: ^5.0.2
   color_map: ^1.0.0
@@ -22,6 +26,18 @@ dependencies:
   meta: ^1.9.1
   path_provider: ^2.0.15
   uuid: ^3.0.7
+
+dependency_overrides:
+  flutter_gl_platform_interface:
+    git: 
+      url: https://github.com/organic-nailer/flutter_gl
+      ref: main
+      path: flutter_gl_platform_interface/
+  flutter_gl_windows:
+    git: 
+      url: https://github.com/organic-nailer/flutter_gl
+      ref: main
+      path: flutter_gl_windows/
 
 dev_dependencies:
   flutter_test:
