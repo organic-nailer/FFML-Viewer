@@ -46,6 +46,23 @@ class NativeImpl implements Native {
         argNames: ["path", "framesPerFragment"],
       );
 
+  Stream<PcdFragment> captureHesai({required String address, dynamic hint}) {
+    var arg0 = _platform.api2wire_String(address);
+    return _platform.executeStream(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner.wire_capture_hesai(port_, arg0),
+      parseSuccessData: _wire2api_pcd_fragment,
+      constMeta: kCaptureHesaiConstMeta,
+      argValues: [address],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kCaptureHesaiConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "capture_hesai",
+        argNames: ["address"],
+      );
+
   void dispose() {
     _platform.dispose();
   }
@@ -228,6 +245,23 @@ class NativeWire implements FlutterRustBridgeWireBase {
               ffi.Uint32)>>('wire_read_pcap_stream');
   late final _wire_read_pcap_stream = _wire_read_pcap_streamPtr
       .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>, int)>();
+
+  void wire_capture_hesai(
+    int port_,
+    ffi.Pointer<wire_uint_8_list> address,
+  ) {
+    return _wire_capture_hesai(
+      port_,
+      address,
+    );
+  }
+
+  late final _wire_capture_hesaiPtr = _lookup<
+      ffi.NativeFunction<
+          ffi.Void Function(
+              ffi.Int64, ffi.Pointer<wire_uint_8_list>)>>('wire_capture_hesai');
+  late final _wire_capture_hesai = _wire_capture_hesaiPtr
+      .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>)>();
 
   ffi.Pointer<wire_uint_8_list> new_uint_8_list_0(
     int len,

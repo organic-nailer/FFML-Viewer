@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_pcd/cube_view.dart';
 import 'package:flutter_pcd/main_page.dart';
 import 'package:flutter_pcd/pcap_page.dart';
+import 'package:flutter_pcd/stream_page.dart';
 import 'package:flutter_pcd/store_file_page.dart';
 
 void main() {
@@ -19,7 +20,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MainPage(),
+      // home: const MainPage(),
+      home: StreamPage(),
       // home: const PcapPage()
       // home: CubePage(),
       // home: const StoreFilePage(),

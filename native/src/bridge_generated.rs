@@ -46,6 +46,24 @@ fn wire_read_pcap_stream_impl(
         },
     )
 }
+fn wire_capture_hesai_impl(port_: MessagePort, address: impl Wire2Api<String> + UnwindSafe) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap::<_, _, _, ()>(
+        WrapInfo {
+            debug_name: "capture_hesai",
+            port: Some(port_),
+            mode: FfiCallMode::Stream,
+        },
+        move || {
+            let api_address = address.wire2api();
+            move |task_callback| {
+                Ok(capture_hesai(
+                    task_callback.stream_sink::<_, PcdFragment>(),
+                    api_address,
+                ))
+            }
+        },
+    )
+}
 // Section: wrapper structs
 
 // Section: static checks

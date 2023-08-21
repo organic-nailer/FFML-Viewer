@@ -1,4 +1,6 @@
 use std::fs::File;
+use std::net::UdpSocket;
+use std::time::Duration;
 use flutter_rust_bridge::StreamSink;
 use pcap_parser::*;
 use pcap_parser::traits::PcapReaderIterator;
@@ -120,6 +122,38 @@ pub fn read_pcap_stream(stream: StreamSink<PcdFragment>, path: String, frames_pe
     //     });
     // }
     println!("elapsed in rust: {} ms", start.elapsed().as_millis());
+}
+
+pub fn capture_hesai(stream: StreamSink<PcdFragment>, address: String) {
+    // println!("Hello, world!");
+    let socket = UdpSocket::bind(address).expect("Failed to bind socket");
+    socket.set_read_timeout(Some(Duration::from_millis(100))).unwrap();
+    let mut buf = [0; 1500];
+
+    // let mut frame_counter = 0;
+    // let mut invalid_point_num = 0;
+
+    let mut writer = VertexWriter::create(1, stream);
+
+    loop {
+        match socket.recv_from(&mut buf) {
+            Ok((amt, _src)) => {
+                // println!("recv_from function succeeded: {} bytes read from {}", amt, src);
+                parse_packet_body(&buf[..amt], &mut writer);
+                // invalid_point_num += points.iter().filter(|p| p.distance_m < 0.05).count();
+                // frame_counter += 1;
+                // if frame_counter >= 500 {
+                //     println!("{}", invalid_point_num);
+                //     invalid_point_num = 0;
+                //     frame_counter = 0;
+                // }
+            }
+            Err(e) => {
+                println!("recv_from function failed: {}", e);
+                break;
+            }
+        }
+    }
 }
 
 // #[cfg(test)]

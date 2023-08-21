@@ -10,6 +10,11 @@ pub extern "C" fn wire_read_pcap_stream(
     wire_read_pcap_stream_impl(port_, path, frames_per_fragment)
 }
 
+#[no_mangle]
+pub extern "C" fn wire_capture_hesai(port_: i64, address: *mut wire_uint_8_list) {
+    wire_capture_hesai_impl(port_, address)
+}
+
 // Section: allocate functions
 
 #[no_mangle]

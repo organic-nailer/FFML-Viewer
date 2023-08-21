@@ -13,6 +13,10 @@ abstract class Native {
       {required String path, required int framesPerFragment, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kReadPcapStreamConstMeta;
+
+  Stream<PcdFragment> captureHesai({required String address, dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kCaptureHesaiConstMeta;
 }
 
 class PcdFragment {
