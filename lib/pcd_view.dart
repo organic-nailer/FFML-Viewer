@@ -10,12 +10,14 @@ class PcdView extends StatefulWidget {
   final Size canvasSize;
   final Float32List vertices;
   final int maxPointNum;
+  final double pointSize;
   final Color backgroundColor;
   const PcdView(
       {Key? key,
       required this.canvasSize,
       required this.vertices,
       int? maxPointNum,
+      this.pointSize = 1.0,
       this.backgroundColor = Colors.black})
       : maxPointNum = maxPointNum ?? vertices.length ~/ 6, super(key: key);
 
@@ -265,6 +267,7 @@ class _PcdViewState extends State<PcdView> {
         _viewingTransform *
         rotOriginTransform;
     gl.uniformMatrix4fv(transformLoc, false, transform.storage);
+    gl.uniform1f(gl.getUniformLocation(_glProgram, 'pointSize'), widget.pointSize);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, _frameBuffer);
 
@@ -334,10 +337,11 @@ class _PcdViewState extends State<PcdView> {
 attribute vec3 a_Position;
 attribute vec3 a_Color;
 uniform mat4 transform;
+uniform float pointSize;
 varying vec3 v_Color;
 void main() {
   gl_Position = transform * vec4(a_Position, 1.0);
-  gl_PointSize = 5.0;
+  gl_PointSize = pointSize;
   v_Color = a_Color;
 }
 """;

@@ -15,6 +15,8 @@ class StreamPageState extends State<StreamPage> {
   Stream<PcdFragment>? _stream;
   Float32List? _vertices;
 
+  int _pointSize = 3;
+
   @override
   Widget build(BuildContext context) {
       return Scaffold(
@@ -29,8 +31,36 @@ class StreamPageState extends State<StreamPage> {
                     vertices: _vertices!,
                     backgroundColor: Colors.grey.shade600,
                     maxPointNum: 128000,
+                    pointSize: _pointSize.toDouble(),
                   ),
                 ) : const Center(child: Text("no data")),
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton(
+                        child: const Text("-"),
+                        onPressed: () {
+                          setState(() {
+                            _pointSize = (_pointSize - 1).clamp(1, 10);
+                          });
+                        },
+                      ),
+                      Text("$_pointSize"),
+                      ElevatedButton(
+                        child: const Text("+"),
+                        onPressed: () {
+                          setState(() {
+                            _pointSize = (_pointSize + 1).clamp(1, 10);
+                          });
+                        },
+                      ),
+                    ],
+                  )
+                ),
               ],
             );
           }
