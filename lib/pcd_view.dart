@@ -92,6 +92,9 @@ class _PcdViewState extends State<PcdView> {
     return FutureBuilder(
       future: _glFuture,
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Text('Error: ${snapshot.error}');
+        }
         if (snapshot.connectionState == ConnectionState.done) {
           render();
           return Listener(
@@ -328,7 +331,7 @@ class _PcdViewState extends State<PcdView> {
     });
   }
 
-  dynamic initGL(dynamic gl, Float32List vertices) {
+  Future<void> initGL(dynamic gl, Float32List vertices) async {
     gl.enable(0x8642); // GL_PROGRAM_POINT_SIZE
     gl.enable(gl.DEPTH_TEST);
     const vertexShaderSource = """#version ${kIsWeb ? "300 es" : "150"}
