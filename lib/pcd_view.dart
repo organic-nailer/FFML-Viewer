@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart' hide Matrix4;
 import 'package:flutter/material.dart' hide Matrix4;
 import 'package:flutter_gl/flutter_gl.dart';
+import 'package:flutter_pcd/pcd_view/frame_buffer.dart';
 import 'package:flutter_pcd/pcd_view/grid.dart';
 import 'package:flutter_pcd/pcd_view/program.dart';
 import 'package:vector_math/vector_math.dart' show Vector3, Vector4, Matrix4;
@@ -29,8 +30,7 @@ class PcdView extends StatefulWidget {
 
 class _PcdViewState extends State<PcdView> {
   late FlutterGlPlugin _flutterGlPlugin;
-  late dynamic _frameBuffer;
-  late dynamic _sourceTexture;
+  late FrameBuffer _frameBuffer;
   late PcdProgram _pcdProgram;
   late dynamic _vertexBuffer;
   late dynamic _vao;
@@ -201,25 +201,7 @@ class _PcdViewState extends State<PcdView> {
     final height = size.height.toInt();
 
     // recreate FBO
-    _frameBuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, _frameBuffer);
-
-    final colorTexture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, colorTexture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA,
-        gl.UNSIGNED_BYTE, null);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
-
-    final depthRBO = gl.createRenderbuffer();
-    gl.bindRenderbuffer(gl.RENDERBUFFER, depthRBO);
-    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
-    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthRBO);
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, 0);
-
-    _sourceTexture = colorTexture;
+    _frameBuffer = FrameBuffer(gl, width, height);
 
     await _flutterGlPlugin.updateSize({
       "width": width,
@@ -238,25 +220,7 @@ class _PcdViewState extends State<PcdView> {
     final height = widget.canvasSize.height.toInt();
 
     // create default FBO
-    _frameBuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, _frameBuffer);
-
-    final colorTexture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, colorTexture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA,
-        gl.UNSIGNED_BYTE, null);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
-
-    final depthRBO = gl.createRenderbuffer();
-    gl.bindRenderbuffer(gl.RENDERBUFFER, depthRBO);
-    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
-    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthRBO);
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, 0);
-
-    _sourceTexture = colorTexture;
+    _frameBuffer = FrameBuffer(gl, width, height);
   }
 
   void render() async {
@@ -273,27 +237,24 @@ class _PcdViewState extends State<PcdView> {
     gl.uniformMatrix4fv(transformLoc, false, transform.storage);
     gl.uniform1f(_pcdProgram.getUniformPointSize(gl), widget.pointSize);
 
-    gl.bindFramebuffer(gl.FRAMEBUFFER, _frameBuffer);
-
-    gl.viewport(0, 0, size.width.toInt(), size.height.toInt());
-    gl.clearColor(color.red / 255, color.green / 255, color.blue / 255, 1);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    // gl.drawArrays(gl.TRIANGLES, 0, 3);
+    _frameBuffer.bind(gl, () {
+      gl.viewport(0, 0, size.width.toInt(), size.height.toInt());
+      gl.clearColor(color.red / 255, color.green / 255, color.blue / 255, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      // gl.drawArrays(gl.TRIANGLES, 0, 3);
     
-    // draw grid
-    _grid.draw(gl);
+      // draw grid
+      _grid.draw(gl);
 
-
-    gl.bindVertexArray(_vao);
-    gl.drawArrays(gl.POINTS, 0, verticesLength);
-    gl.bindVertexArray(0);
-
-    gl.bindFramebuffer(gl.FRAMEBUFFER, 0);
+      gl.bindVertexArray(_vao);
+      gl.drawArrays(gl.POINTS, 0, verticesLength);
+      gl.bindVertexArray(0);
+    });
 
     gl.finish();
 
     if (!kIsWeb) {
-      _flutterGlPlugin.updateTexture(_sourceTexture);
+      _flutterGlPlugin.updateTexture(_frameBuffer.sourceTexture);
     }
   }
 
