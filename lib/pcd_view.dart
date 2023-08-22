@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart' hide Matrix4;
 import 'package:flutter/material.dart' hide Matrix4;
 import 'package:flutter_gl/flutter_gl.dart';
+import 'package:flutter_pcd/pcd_view/grid.dart';
 import 'package:vector_math/vector_math.dart' show Vector3, Vector4, Matrix4;
 
 class PcdView extends StatefulWidget {
@@ -32,8 +33,7 @@ class _PcdViewState extends State<PcdView> {
   late dynamic _glProgram;
   late dynamic _vertexBuffer;
   late dynamic _vao;
-  late dynamic _vaoGrid;
-  late int _gridPointNum;
+  final GridBase _grid = VeloGrid();
   late Future<void> _glFuture;
   bool _isInitialized = false;
   final Matrix4 _viewingTransform = getViewingTransform(
@@ -279,9 +279,8 @@ class _PcdViewState extends State<PcdView> {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     // gl.drawArrays(gl.TRIANGLES, 0, 3);
     
-    gl.bindVertexArray(_vaoGrid);
-    gl.drawArrays(gl.LINES, 0, _gridPointNum);
-    gl.bindVertexArray(0);
+    // draw grid
+    _grid.draw(gl);
 
 
     gl.bindVertexArray(_vao);
@@ -422,30 +421,10 @@ void main() {
     } gl.bindVertexArray(0);
 
     // grid
-    final grid = genGrid();
-    _gridPointNum = grid.length ~/ 6;
-    final gridBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, gridBuffer);
-    if (kIsWeb) {
-      gl.bufferData(gl.ARRAY_BUFFER, grid.length, grid, gl.STATIC_DRAW);
-    } else {
-      gl.bufferData(gl.ARRAY_BUFFER, grid.lengthInBytes, grid, gl.STATIC_DRAW);
-    }
-
-    _vaoGrid = gl.createVertexArray();
-    gl.bindVertexArray(_vaoGrid); {
-      gl.bindBuffer(gl.ARRAY_BUFFER, gridBuffer);
-      final attrPos = gl.getAttribLocation(_glProgram, "a_Position");
-      final attrCol = gl.getAttribLocation(_glProgram, "a_Color");
-      gl.vertexAttribPointer(attrPos, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
-      gl.enableVertexAttribArray(attrPos);
-      gl.vertexAttribPointer(attrCol, 3, gl.FLOAT, false, 
-        6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
-      gl.enableVertexAttribArray(attrCol);
-      gl.vertexAttribPointer(attrPos, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
-      gl.vertexAttribPointer(attrCol, 3, gl.FLOAT, false, 
-        6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
-    } gl.bindVertexArray(0);
+    _grid.prepareVAO(gl, 
+      gl.getAttribLocation(_glProgram, "a_Position"),
+      gl.getAttribLocation(_glProgram, "a_Color"),
+    );
   }
 }
 
@@ -491,43 +470,4 @@ void updateBuffer(
   } else {
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.lengthInBytes);
   }
-}
-
-Float32List genGrid() {
-  const color = Colors.white54;
-  const z = 0.0;
-  List<double> genLineXY(double x0, double y0, double x1, double y1) {
-    return [
-      x0, y0, z, color.red / 255, color.green / 255, color.blue / 255,
-      x1, y1, z, color.red / 255, color.green / 255, color.blue / 255,
-    ];
-  }
-  List<double> genCircle(double cx, double cy, double r, int segments) {
-    final result = <double>[];
-    for (var i = 0; i < segments; i++) {
-      final theta0 = 2 * math.pi * i / segments;
-      final theta1 = 2 * math.pi * (i + 1) / segments;
-      result.addAll(genLineXY(
-        cx + r * math.cos(theta0), cy + r * math.sin(theta0),
-        cx + r * math.cos(theta1), cy + r * math.sin(theta1),
-      ));
-    }
-    return result;
-  }
-  const minX = -100;
-  const maxX = 100;
-  const minY = -100;
-  const maxY = 100;
-  const interval = 10;
-  final result = <double>[];
-  for (var x = minX; x <= maxX; x += interval) {
-    result.addAll(genLineXY(x.toDouble(), minY.toDouble(), x.toDouble(), maxY.toDouble()));
-  }
-  for (var y = minY; y <= maxY; y += interval) {
-    result.addAll(genLineXY(minX.toDouble(), y.toDouble(), maxX.toDouble(), y.toDouble()));
-  }
-  for (var r = 10; r <= 100; r += 10) {
-    result.addAll(genCircle(0, 0, r.toDouble(), 100));
-  }
-  return Float32List.fromList(result);
 }
