@@ -231,7 +231,6 @@ class _PcdViewState extends State<PcdView> {
     final gl = _flutterGlPlugin.gl;
     final size = widget.canvasSize;
     final color = widget.backgroundColor;
-    final verticesLength = widget.vertices.length ~/ 6;
     // set transform
     final transformLoc = _pcdProgram.getUniformTransform(gl);
     final transform = _projectiveTransform *
