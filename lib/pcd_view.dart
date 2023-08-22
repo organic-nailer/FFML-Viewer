@@ -5,6 +5,7 @@ import 'package:flutter/gestures.dart' hide Matrix4;
 import 'package:flutter/material.dart' hide Matrix4;
 import 'package:flutter_gl/flutter_gl.dart';
 import 'package:flutter_pcd/pcd_view/grid.dart';
+import 'package:flutter_pcd/pcd_view/program.dart';
 import 'package:vector_math/vector_math.dart' show Vector3, Vector4, Matrix4;
 
 class PcdView extends StatefulWidget {
@@ -30,7 +31,7 @@ class _PcdViewState extends State<PcdView> {
   late FlutterGlPlugin _flutterGlPlugin;
   late dynamic _frameBuffer;
   late dynamic _sourceTexture;
-  late dynamic _glProgram;
+  late PcdProgram _pcdProgram;
   late dynamic _vertexBuffer;
   late dynamic _vao;
   final GridBase _grid = VeloGrid();
@@ -264,13 +265,13 @@ class _PcdViewState extends State<PcdView> {
     final color = widget.backgroundColor;
     final verticesLength = widget.vertices.length ~/ 6;
     // set transform
-    final transformLoc = gl.getUniformLocation(_glProgram, 'transform');
+    final transformLoc = _pcdProgram.getUniformTransform(gl);
     final transform = _projectiveTransform *
         cameraMoveTransform *
         _viewingTransform *
         rotOriginTransform;
     gl.uniformMatrix4fv(transformLoc, false, transform.storage);
-    gl.uniform1f(gl.getUniformLocation(_glProgram, 'pointSize'), widget.pointSize);
+    gl.uniform1f(_pcdProgram.getUniformPointSize(gl), widget.pointSize);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, _frameBuffer);
 
@@ -331,67 +332,8 @@ class _PcdViewState extends State<PcdView> {
   }
 
   Future<void> initGL(dynamic gl, Float32List vertices) async {
-    gl.enable(0x8642); // GL_PROGRAM_POINT_SIZE
-    gl.enable(gl.DEPTH_TEST);
-    const vertexShaderSource = """#version ${kIsWeb ? "300 es" : "150"}
-#define attribute in
-#define varying out
-attribute vec3 a_Position;
-attribute vec3 a_Color;
-uniform mat4 transform;
-uniform float pointSize;
-varying vec3 v_Color;
-void main() {
-  gl_Position = transform * vec4(a_Position, 1.0);
-  gl_PointSize = pointSize;
-  v_Color = a_Color;
-}
-""";
-    const fragmentShaderSource = """#version ${kIsWeb ? "300 es" : "150"}
-out highp vec4 pc_fragColor;
-#define gl_FragColor pc_fragColor
-#define varying in
-
-precision highp float;
-varying vec3 v_Color;
-
-void main() {
-  gl_FragColor = vec4(v_Color, 1.0);
-}
-""";
-
-    final vertexShader = gl.createShader(gl.VERTEX_SHADER);
-    gl.shaderSource(vertexShader, vertexShaderSource);
-    gl.compileShader(vertexShader);
-
-    var res = gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS);
-    if (res == 0 || res == false) {
-      throw Exception("Error compiling shader: ${gl.getShaderInfoLog(vertexShader)}");
-    }
-
-    final fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-    gl.shaderSource(fragmentShader, fragmentShaderSource);
-    gl.compileShader(fragmentShader);
-
-    res = gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS);
-    if (res == 0 || res == false) {
-      throw Exception("Error compiling shader: ${gl.getShaderInfoLog(fragmentShader)}");
-    }
-
-    _glProgram = gl.createProgram();
-    gl.attachShader(_glProgram, vertexShader);
-    gl.attachShader(_glProgram, fragmentShader);
-    gl.linkProgram(_glProgram);
-
-    res = gl.getProgramParameter(_glProgram, gl.LINK_STATUS);
-    if (res == false || res == 0) {
-      throw Exception("Unable to initialize the shader program");
-    }
-
-    gl.deleteShader(vertexShader);
-    gl.deleteShader(fragmentShader);
-
-    gl.useProgram(_glProgram);
+    _pcdProgram = PcdProgram(gl);
+    _pcdProgram.use(gl);
 
     _vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, _vertexBuffer);
@@ -404,27 +346,25 @@ void main() {
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices, 0, vertices.lengthInBytes);
     }
 
+    final attrPosition = _pcdProgram.getAttrPosition(gl);
+    final attrColor = _pcdProgram.getAttrColor(gl);
+
     _vao = gl.createVertexArray();
     gl.bindVertexArray(_vao); {
       // なぜかこの順番で呼ぶと動く
-      final attrPos = gl.getAttribLocation(_glProgram, "a_Position");
-      final attrCol = gl.getAttribLocation(_glProgram, "a_Color");
       gl.bindBuffer(gl.ARRAY_BUFFER, _vertexBuffer);
-      gl.vertexAttribPointer(attrPos, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
-      gl.enableVertexAttribArray(attrPos);
-      gl.vertexAttribPointer(attrCol, 3, gl.FLOAT, false, 
+      gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
+      gl.enableVertexAttribArray(attrPosition);
+      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
         6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
-      gl.enableVertexAttribArray(attrCol);
-      gl.vertexAttribPointer(attrPos, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
-      gl.vertexAttribPointer(attrCol, 3, gl.FLOAT, false, 
+      gl.enableVertexAttribArray(attrColor);
+      gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
+      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
         6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
     } gl.bindVertexArray(0);
 
     // grid
-    _grid.prepareVAO(gl, 
-      gl.getAttribLocation(_glProgram, "a_Position"),
-      gl.getAttribLocation(_glProgram, "a_Color"),
-    );
+    _grid.prepareVAO(gl, attrPosition, attrColor);
   }
 }
 
