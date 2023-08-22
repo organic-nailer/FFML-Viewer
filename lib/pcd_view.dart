@@ -7,6 +7,7 @@ import 'package:flutter_gl/flutter_gl.dart';
 import 'package:flutter_pcd/pcd_view/frame_buffer.dart';
 import 'package:flutter_pcd/pcd_view/grid.dart';
 import 'package:flutter_pcd/pcd_view/program.dart';
+import 'package:flutter_pcd/pcd_view/vertex_buffer_manager.dart';
 import 'package:vector_math/vector_math.dart' show Vector3, Vector4, Matrix4;
 
 class PcdView extends StatefulWidget {
@@ -32,9 +33,8 @@ class _PcdViewState extends State<PcdView> {
   late FlutterGlPlugin _flutterGlPlugin;
   late FrameBuffer _frameBuffer;
   late PcdProgram _pcdProgram;
-  late dynamic _vertexBuffer;
-  late dynamic _vao;
-  final GridBase _grid = VeloGrid();
+  late VertexBufferManager _vertexBufferManager;
+  late GridBase _grid;
   late Future<void> _glFuture;
   bool _isInitialized = false;
   final Matrix4 _viewingTransform = getViewingTransform(
@@ -94,6 +94,10 @@ class _PcdViewState extends State<PcdView> {
       future: _glFuture,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
+          final error = snapshot.error;
+          if (error is Error) {
+            return Text('Error: $error\n${error.stackTrace.toString()}');
+          }
           return Text('Error: ${snapshot.error}');
         }
         if (snapshot.connectionState == ConnectionState.done) {
@@ -246,9 +250,8 @@ class _PcdViewState extends State<PcdView> {
       // draw grid
       _grid.draw(gl);
 
-      gl.bindVertexArray(_vao);
-      gl.drawArrays(gl.POINTS, 0, verticesLength);
-      gl.bindVertexArray(0);
+      // draw points
+      _vertexBufferManager.draw(gl);
     });
 
     gl.finish();
@@ -260,7 +263,7 @@ class _PcdViewState extends State<PcdView> {
 
   void updateVertices(Float32List vertices) {
     final gl = _flutterGlPlugin.gl;
-    updateBuffer(gl, _vertexBuffer, vertices);
+    _vertexBufferManager.update(gl, vertices);
   }
 
   void viewZoom(double zoomNormalized, double mousePosX, double mousePosY) {
@@ -296,36 +299,11 @@ class _PcdViewState extends State<PcdView> {
     _pcdProgram = PcdProgram(gl);
     _pcdProgram.use(gl);
 
-    _vertexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, _vertexBuffer);
-    Float32Array initData = Float32Array(widget.maxPointNum * 6);
-    if (kIsWeb) {
-      gl.bufferData(gl.ARRAY_BUFFER, initData.length, initData, gl.DYNAMIC_DRAW);
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices, 0, vertices.length);
-    } else {
-      gl.bufferData(gl.ARRAY_BUFFER, initData.lengthInBytes, initData, gl.DYNAMIC_DRAW);
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices, 0, vertices.lengthInBytes);
-    }
-
-    final attrPosition = _pcdProgram.getAttrPosition(gl);
-    final attrColor = _pcdProgram.getAttrColor(gl);
-
-    _vao = gl.createVertexArray();
-    gl.bindVertexArray(_vao); {
-      // なぜかこの順番で呼ぶと動く
-      gl.bindBuffer(gl.ARRAY_BUFFER, _vertexBuffer);
-      gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
-      gl.enableVertexAttribArray(attrPosition);
-      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
-        6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
-      gl.enableVertexAttribArray(attrColor);
-      gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
-      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
-        6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
-    } gl.bindVertexArray(0);
+    _vertexBufferManager =
+        VertexBufferManager(gl, _pcdProgram, vertices, widget.maxPointNum);
 
     // grid
-    _grid.prepareVAO(gl, attrPosition, attrColor);
+    _grid = VeloGrid(gl, _pcdProgram);
   }
 }
 
@@ -358,17 +336,4 @@ Matrix4 getProjectiveTransform(
     0         , 0, z, w,
     0         , 0,-1, 0,
   ).transposed();
-}
-
-void updateBuffer(
-  dynamic gl, dynamic buffer, dynamic data
-) {
-  // bufferSubDataでは最初にBufferDataで指定したサイズ以上のデータを受け入れてくれないので注意
-  // 最初に想定される最大サイズで初期化する必要がある
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  if (kIsWeb) {
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.length);
-  } else {
-    gl.bufferSubData(gl.ARRAY_BUFFER, 0, data, 0, data.lengthInBytes);
-  }
 }

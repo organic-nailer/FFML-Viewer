@@ -2,34 +2,17 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_pcd/pcd_view/program.dart';
 
 abstract class GridBase {
-  bool draw(dynamic gl);
-  bool prepareVAO(dynamic gl, int attrPosition, int attrColor);
+  void draw(dynamic gl);
 }
 
 class VeloGrid implements GridBase {
-  int? _vao;
-  int? _gridPointNum;
+  late int _vao;
+  late int _gridPointNum;
 
-  VeloGrid() {
-    _vao = null;
-    _gridPointNum = null;
-  }
-
-  @override
-  bool draw(dynamic gl) {
-    if (_vao == null || _gridPointNum == null) {
-      return false;
-    }
-    gl.bindVertexArray(_vao);
-    gl.drawArrays(gl.LINES, 0, _gridPointNum!);
-    gl.bindVertexArray(0);
-    return true;
-  }
-
-  @override
-  bool prepareVAO(dynamic gl, int attrPosition, int attrColor) {
+  VeloGrid(dynamic gl, PcdProgram pcdProgram) {
     final grid = _genGrid();
     _gridPointNum = grid.length ~/ 6;
     final gridBuffer = gl.createBuffer();
@@ -39,12 +22,13 @@ class VeloGrid implements GridBase {
     } else {
       gl.bufferData(gl.ARRAY_BUFFER, grid.lengthInBytes, grid, gl.STATIC_DRAW);
     }
+    
+    final attrPosition = pcdProgram.getAttrPosition(gl);
+    final attrColor = pcdProgram.getAttrColor(gl);
 
     _vao = gl.createVertexArray();
     gl.bindVertexArray(_vao); {
       gl.bindBuffer(gl.ARRAY_BUFFER, gridBuffer);
-      // final attrPos = gl.getAttribLocation(_glProgram, "a_Position");
-      // final attrCol = gl.getAttribLocation(_glProgram, "a_Color");
       gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
       gl.enableVertexAttribArray(attrPosition);
       gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
@@ -54,8 +38,13 @@ class VeloGrid implements GridBase {
       gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
         6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
     } gl.bindVertexArray(0);
+  }
 
-    return true;
+  @override
+  void draw(dynamic gl) {
+    gl.bindVertexArray(_vao);
+    gl.drawArrays(gl.LINES, 0, _gridPointNum);
+    gl.bindVertexArray(0);
   }
 }
 
