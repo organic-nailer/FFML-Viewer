@@ -3,7 +3,7 @@ import 'package:flutter_gl/flutter_gl.dart';
 import 'package:flutter_pcd/pcd_view/program.dart';
 
 class VertexBufferManager {
-  late int _vertexBuffer;
+  late dynamic _vertexBuffer;
   late int _vao;
   late int _pointNum;
 
