@@ -18,6 +18,10 @@ class MyApp extends StatelessWidget {
       title: 'Flutter Demo',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        cardTheme: const CardTheme(
+          color: Colors.transparent,
+          elevation: 0,
+        ),
         useMaterial3: true,
       ),
       home: const MainPage(),
