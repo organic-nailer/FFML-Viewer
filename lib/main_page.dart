@@ -1,10 +1,13 @@
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_pcd/dialog/fast_color_picker.dart';
+import 'package:flutter_pcd/pcap_manager.dart';
 import 'package:flutter_pcd/pcd_view.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
+import 'package:path_provider/path_provider.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({Key? key}) : super(key: key);
@@ -21,6 +24,11 @@ class _MainPageState extends State<MainPage> {
   SideState sideState = SideState.none;
 
   Color backgroundColor = Colors.grey;
+
+  int selectedFrame = 0;
+  int maxPointNum = 128000;
+  PcapManager? _pcapManager;
+  PcdDataSource _dataSource = PcdDataSource(Float32List(0));
 
   @override
   void initState() {
@@ -70,7 +78,35 @@ class _MainPageState extends State<MainPage> {
                         children: [
                           TextButton(
                             child: const Text("File"),
-                            onPressed: () {},
+                            onPressed: () async {
+                              const typeGroup = XTypeGroup(
+                                label: "point cloud(xt32)",
+                                extensions: ["pcap"],
+                              );
+                              final file = await openFile(
+                                  acceptedTypeGroups: [typeGroup]);
+                              if (file == null) {
+                                print("no file selected");
+                                return;
+                              }
+                              final path = file.path;
+                              final tempDir = await getTemporaryDirectory();
+                              _pcapManager = PcapManager(tempDir.path);
+                              _pcapManager!.addListener(() async {
+                                if (_pcapManager!.length > 0 &&
+                                    _dataSource.points.isEmpty) {
+                                  _vertices = await _pcapManager![0];
+                                  _dataSource = PcdDataSource(
+                                      _pcapManager!.points[selectedFrame]);
+                                }
+                                setState(() {});
+                              });
+                              final success = await _pcapManager!.run(path);
+                              if (!success) {
+                                print("failed to run pcap manager");
+                                return;
+                              }
+                            },
                           ),
                           TextButton(
                             child: const Text("Edit"),
@@ -104,6 +140,24 @@ class _MainPageState extends State<MainPage> {
                             child: const Text("Help"),
                             onPressed: () {},
                           ),
+                          if ((_pcapManager?.length ?? 0) > 1)
+                            SizedBox(
+                              width: 1000,
+                              child: Slider(
+                                value: selectedFrame.toDouble(),
+                                min: 0,
+                                max: _pcapManager!.length - 1,
+                                divisions: _pcapManager!.length - 1,
+                                onChanged: (value) async {
+                                  selectedFrame = value.toInt();
+                                  _vertices =
+                                      await _pcapManager![selectedFrame];
+                                  _dataSource = PcdDataSource(
+                                      _pcapManager!.points[selectedFrame]);
+                                  setState(() {});
+                                },
+                              ),
+                            )
                         ],
                       )),
                     ],
@@ -127,7 +181,7 @@ class _MainPageState extends State<MainPage> {
                           canvasSize: canvasSize,
                           vertices: _vertices,
                           // colors: _colors.toDartList(),
-                          maxPointNum: 29 * 29 * 29,
+                          maxPointNum: maxPointNum,
                           backgroundColor: backgroundColor,
                           pointSize: pointSize,
                         );
@@ -341,7 +395,10 @@ class _MainPageState extends State<MainPage> {
                                 showCheckboxColumn: false,
                                 rowsPerPage: 100,
                                 columns: PcdDataSource.columns,
-                                source: PcdDataSource(),
+                                source: _dataSource,
+                                headingRowHeight: 24,
+                                dataRowMaxHeight: 24,
+                                dataRowMinHeight: 24,
                               ),
                             ),
                           )),
@@ -408,23 +465,34 @@ class PcdDataSource extends DataTableSource {
     DataColumn(label: Text("vertical_angle")),
   ];
 
+  final Float32List points;
+
+  PcdDataSource(this.points);
+
   @override
   DataRow? getRow(int index) {
-    return DataRow(cells: [
-      DataCell(Text("x")),
-      DataCell(Text("y")),
-      DataCell(Text("z")),
-      DataCell(Text("x")),
-      DataCell(Text("y")),
-      DataCell(Text("z")),
-      DataCell(Text("x")),
-      DataCell(Text("y")),
-      DataCell(Text("z")),
-    ]);
+    if (index >= points.length) {
+      return null;
+    }
+    final point = points.sublist(index * 9, index * 9 + 9);
+    return DataRow.byIndex(
+        index: index,
+        cells: [
+          DataCell(Text(point[6].toStringAsFixed(3))),
+          DataCell(Text(point[7].toStringAsFixed(3))),
+          DataCell(Text(point[8].toStringAsFixed(3))),
+          DataCell(Text("${point[4].toInt()}")),
+          DataCell(Text("${point[2].toInt()}")),
+          DataCell(Text(point[3].toStringAsFixed(3))),
+          DataCell(Text("${point[0].toInt()}")),
+          const DataCell(Text("-")),
+          const DataCell(Text("-")),
+        ],
+        onSelectChanged: (value) {});
   }
 
   @override
-  int get rowCount => 99;
+  int get rowCount => points.length ~/ 9;
 
   @override
   bool get isRowCountApproximate => false;

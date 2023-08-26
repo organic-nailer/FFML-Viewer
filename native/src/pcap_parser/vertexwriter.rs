@@ -1,60 +1,46 @@
-use crate::api::PcdFragment;
+use crate::api::PcdFrame;
 
 use super::{framewriter::FrameWriter, velopoint::VeloPoint};
-use std::cmp::max;
 use colorgrad;
 use flutter_rust_bridge::StreamSink;
 
 pub struct VertexWriter {
     pub buffer: Vec<f32>,
-    pub frame_start_indices: Vec<u32>,
-    pub max_point_num: u32,
+    pub points: Vec<f32>,
     previous_azimuth: u16,
     colormap: colorgrad::Gradient,
-    frames_per_fragment: u32,
-    stream: StreamSink<PcdFragment>,
+    stream: StreamSink<PcdFrame>,
 }
 
 impl VertexWriter {
-    pub fn create(frames_per_fragment: u32, stream: StreamSink<PcdFragment>) -> Self {
+    pub fn create(stream: StreamSink<PcdFrame>) -> Self {
         let colormap = colorgrad::turbo();
         Self {
             buffer: Vec::new(),
-            frame_start_indices: vec![0],
-            max_point_num: 0,
+            points: Vec::new(),
             previous_azimuth: 0,
             colormap,
-            frames_per_fragment,
             stream,
         }
     }
 
     pub fn sink(&mut self) {
-        let fragment = PcdFragment {
+        let fragment = PcdFrame {
             vertices: self.buffer.clone(),
-            frame_start_indices: self.frame_start_indices.clone(),
-            max_point_num: self.max_point_num,
+            // points: Vec::new(),
+            points: self.points.clone(),
         };
         self.stream.add(fragment);
         self.buffer.clear();
-        self.frame_start_indices.clear();
-        self.frame_start_indices.push(0);
-        self.max_point_num = 0;
+        self.points.clear();
     }
 }
 
 impl FrameWriter for VertexWriter {
     fn write_row(&mut self, row: VeloPoint) {
         if row.azimuth < self.previous_azimuth {
-            let point_num_bytes = self.buffer.len() as u32 - self.frame_start_indices.last().unwrap_or(&0);
-            if point_num_bytes > 0 {
-                self.max_point_num = max(self.max_point_num, point_num_bytes / 6);
-                if self.frame_start_indices.len() as u32 == self.frames_per_fragment {
-                    self.sink();
-                }
-                else {
-                    self.frame_start_indices.push(self.buffer.len() as u32);
-                }
+            if !self.buffer.is_empty() {
+                self.sink();
             }
         }
         self.previous_azimuth = row.azimuth;
@@ -64,13 +50,19 @@ impl FrameWriter for VertexWriter {
             color.r as f32, color.g as f32, color.b as f32
         ];
         self.buffer.extend(&xyzrgb);
+        self.points.extend(&[
+            row.reflectivity as f32,
+            row.channel as f32,
+            row.azimuth as f32,
+            row.distance_m,
+            row.timestamp as f32,
+            row.vertical_angle,
+            row.x, row.y, row.z,
+        ]);
     }
 
     fn finalize(&mut self) {
-        let point_num_bytes = self.buffer.len() as u32 - self.frame_start_indices.last().unwrap_or(&0);
-        if point_num_bytes > 0 {
-            self.max_point_num = max(self.max_point_num, point_num_bytes / 6);
-            // self.frame_start_indices.push(self.buffer.len() as u32);
+        if !self.buffer.is_empty() {
             self.sink();
         }
     }

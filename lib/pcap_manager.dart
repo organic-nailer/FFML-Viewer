@@ -9,13 +9,14 @@ import 'package:uuid/uuid.dart';
 class PcapManager extends ChangeNotifier {
   static int framesPerFragment = 8;
   
-  Stream<PcdFragment>? _pcdStream;
+  Stream<PcdFrame>? _pcdStream;
   // final Map<int, PcdFragment> _cache = {};
   String localCachePath;
   // int nextFragmentKey = 0;
   late RandomAccessFile _readerFile;
   late RandomAccessFile _writerFile;
   List<int> frameStartOffsets = [];
+  List<Float32List> points = [];
   
   int get length => frameStartOffsets.length;
 
@@ -26,7 +27,7 @@ class PcapManager extends ChangeNotifier {
       final cacheFile = await File("$localCachePath/pcd_cache_${const Uuid().v4()}.bin");
       _writerFile = await cacheFile.open(mode: FileMode.writeOnlyAppend);
       _readerFile = await cacheFile.open(mode: FileMode.read);
-      final stream = api.readPcapStream(path: pcapFile, framesPerFragment: framesPerFragment);
+      final stream = api.readPcapStream(path: pcapFile);
       setStream(stream);
       return true;
     } catch (e) {
@@ -35,7 +36,7 @@ class PcapManager extends ChangeNotifier {
     }
   }
 
-  void setStream(Stream<PcdFragment> stream) {
+  void setStream(Stream<PcdFrame> stream) {
     _pcdStream = stream;
     _pcdStream!.listen(_pcdListener);
   }
@@ -49,25 +50,36 @@ class PcapManager extends ChangeNotifier {
     super.dispose();
   }
 
-  void _pcdListener(PcdFragment fragment) {
+  void _pcdListener(PcdFrame fragment) {
     Future(() async {
-      final length = await _writerFile.length();
-      await _writerFile.lock();
-      await _writerFile.writeFrom(fragment.vertices.buffer.asUint8List());
-      await _writerFile.unlock();
-      frameStartOffsets.addAll(fragment.frameStartIndices.map((e) => e * 4 + length));
-      notifyListeners();
+      try {
+        final length = await _writerFile.length();
+        await _writerFile.lock();
+        await _writerFile.writeFrom(fragment.vertices.buffer.asUint8List());
+        await _writerFile.unlock();
+        frameStartOffsets.add(length);
+        print(fragment.points.length);
+        points.add(fragment.points);
+        notifyListeners();
+      } catch (e) {
+        print(e);
+      }
     });
   }
 
-  Float32List operator [](int index) {
-    final offset = frameStartOffsets[index];
-    final length = index + 1 < frameStartOffsets.length 
-      ? frameStartOffsets[index + 1] - offset 
-      : _readerFile.lengthSync() - offset;
-    _readerFile.setPositionSync(offset);
-    final buffer = Uint8List(length);
-    _readerFile.readIntoSync(buffer);
-    return Float32List.view(buffer.buffer);
+  Future<Float32List> operator [](int index) async {
+    try {
+      final offset = frameStartOffsets[index];
+      final length = index + 1 < frameStartOffsets.length 
+        ? frameStartOffsets[index + 1] - offset 
+        : await _readerFile.length() - offset;
+      await _readerFile.setPosition(offset);
+      final buffer = Uint8List(length);
+      await _readerFile.readInto(buffer);
+      return Float32List.view(buffer.buffer);
+    } catch (e) {
+      print(e);
+      return Float32List(0);
+    }
   }
 }

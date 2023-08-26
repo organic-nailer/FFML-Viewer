@@ -9,24 +9,21 @@ import 'package:flutter_rust_bridge/flutter_rust_bridge.dart';
 import 'package:uuid/uuid.dart';
 
 abstract class Native {
-  Stream<PcdFragment> readPcapStream(
-      {required String path, required int framesPerFragment, dynamic hint});
+  Stream<PcdFrame> readPcapStream({required String path, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kReadPcapStreamConstMeta;
 
-  Stream<PcdFragment> captureHesai({required String address, dynamic hint});
+  Stream<PcdFrame> captureHesai({required String address, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kCaptureHesaiConstMeta;
 }
 
-class PcdFragment {
+class PcdFrame {
   final Float32List vertices;
-  final Uint32List frameStartIndices;
-  final int maxPointNum;
+  final Float32List points;
 
-  const PcdFragment({
+  const PcdFrame({
     required this.vertices,
-    required this.frameStartIndices,
-    required this.maxPointNum,
+    required this.points,
   });
 }

@@ -22,11 +22,7 @@ use std::sync::Arc;
 
 // Section: wire functions
 
-fn wire_read_pcap_stream_impl(
-    port_: MessagePort,
-    path: impl Wire2Api<String> + UnwindSafe,
-    frames_per_fragment: impl Wire2Api<u32> + UnwindSafe,
-) {
+fn wire_read_pcap_stream_impl(port_: MessagePort, path: impl Wire2Api<String> + UnwindSafe) {
     FLUTTER_RUST_BRIDGE_HANDLER.wrap::<_, _, _, ()>(
         WrapInfo {
             debug_name: "read_pcap_stream",
@@ -35,12 +31,10 @@ fn wire_read_pcap_stream_impl(
         },
         move || {
             let api_path = path.wire2api();
-            let api_frames_per_fragment = frames_per_fragment.wire2api();
             move |task_callback| {
                 Ok(read_pcap_stream(
-                    task_callback.stream_sink::<_, PcdFragment>(),
+                    task_callback.stream_sink::<_, PcdFrame>(),
                     api_path,
-                    api_frames_per_fragment,
                 ))
             }
         },
@@ -57,7 +51,7 @@ fn wire_capture_hesai_impl(port_: MessagePort, address: impl Wire2Api<String> + 
             let api_address = address.wire2api();
             move |task_callback| {
                 Ok(capture_hesai(
-                    task_callback.stream_sink::<_, PcdFragment>(),
+                    task_callback.stream_sink::<_, PcdFrame>(),
                     api_address,
                 ))
             }
@@ -87,11 +81,6 @@ where
     }
 }
 
-impl Wire2Api<u32> for u32 {
-    fn wire2api(self) -> u32 {
-        self
-    }
-}
 impl Wire2Api<u8> for u8 {
     fn wire2api(self) -> u8 {
         self
@@ -100,18 +89,17 @@ impl Wire2Api<u8> for u8 {
 
 // Section: impl IntoDart
 
-impl support::IntoDart for PcdFragment {
+impl support::IntoDart for PcdFrame {
     fn into_dart(self) -> support::DartAbi {
         vec![
             self.vertices.into_into_dart().into_dart(),
-            self.frame_start_indices.into_into_dart().into_dart(),
-            self.max_point_num.into_into_dart().into_dart(),
+            self.points.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
 }
-impl support::IntoDartExceptPrimitive for PcdFragment {}
-impl rust2dart::IntoIntoDart<PcdFragment> for PcdFragment {
+impl support::IntoDartExceptPrimitive for PcdFrame {}
+impl rust2dart::IntoIntoDart<PcdFrame> for PcdFrame {
     fn into_into_dart(self) -> Self {
         self
     }

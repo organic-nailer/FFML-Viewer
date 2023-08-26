@@ -15,7 +15,7 @@ class PcapPage extends StatefulWidget {
 }
 
 class _PcapPageState extends State<PcapPage> {
-  int selectedFrame = 1;
+  int selectedFrame = 0;
   // int maxFrameNum = 0;
   int maxPointNum = 128000;
   // List<List<VeloPoint>> frames = [];
@@ -30,15 +30,16 @@ class _PcapPageState extends State<PcapPage> {
             final canvasSize = Size(constraints.maxWidth, constraints.maxHeight);
             return Stack(
               children: [
-                (_pcapManager?.length ?? 0) > 0 ? Positioned.fill(
-                  child: PcdView(
-                    canvasSize: canvasSize, 
-                    vertices: _pcapManager![selectedFrame],
-                    backgroundColor: Colors.grey.shade600,
-                    maxPointNum: maxPointNum,
-                  ),
-                ) : const Center(child: Text("no data")),
-                if ((_pcapManager?.length ?? 0) > 0) Align(
+                // (_pcapManager?.length ?? 0) > 0 ? Positioned.fill(
+                //   child: PcdView(
+                //     canvasSize: canvasSize, 
+                //     vertices: _pcapManager![selectedFrame],
+                //     backgroundColor: Colors.grey.shade600,
+                //     maxPointNum: maxPointNum,
+                //     pointSize: 5,
+                //   ),
+                // ) : const Center(child: Text("no data")),
+                if ((_pcapManager?.length ?? 0) > 1) Align(
                   alignment: Alignment.bottomCenter,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,

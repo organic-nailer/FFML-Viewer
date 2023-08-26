@@ -2,12 +2,8 @@ use super::*;
 // Section: wire functions
 
 #[no_mangle]
-pub extern "C" fn wire_read_pcap_stream(
-    port_: i64,
-    path: *mut wire_uint_8_list,
-    frames_per_fragment: u32,
-) {
-    wire_read_pcap_stream_impl(port_, path, frames_per_fragment)
+pub extern "C" fn wire_read_pcap_stream(port_: i64, path: *mut wire_uint_8_list) {
+    wire_read_pcap_stream_impl(port_, path)
 }
 
 #[no_mangle]

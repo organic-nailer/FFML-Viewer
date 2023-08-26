@@ -1,3 +1,4 @@
+#[derive(Debug, Clone, Copy)]
 pub struct VeloPoint {
     pub reflectivity: u8,
     pub channel: u8,

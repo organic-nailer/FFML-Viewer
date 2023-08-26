@@ -12,7 +12,7 @@ class StreamPage extends StatefulWidget {
 }
 
 class StreamPageState extends State<StreamPage> {
-  Stream<PcdFragment>? _stream;
+  Stream<PcdFrame>? _stream;
   Float32List? _vertices;
 
   int _pointSize = 3;
