@@ -149,9 +149,14 @@ class _MainPageState extends State<MainPage> {
                                 max: _pcapManager!.length - 1,
                                 divisions: _pcapManager!.length - 1,
                                 onChanged: (value) async {
+                                  if (value.toInt() == selectedFrame) {
+                                    // 複数回同じ値が来る可能性がある
+                                    return;
+                                  }
                                   selectedFrame = value.toInt();
                                   _vertices =
                                       await _pcapManager![selectedFrame];
+                                  setState(() {});
                                   _dataSource = PcdDataSource(
                                       _pcapManager!.points[selectedFrame]);
                                   setState(() {});
