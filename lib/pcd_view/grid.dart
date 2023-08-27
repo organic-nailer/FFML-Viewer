@@ -37,6 +37,15 @@ class VeloGrid implements GridBase {
       gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
       gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
         6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
+      gl.bindBuffer(gl.ARRAY_BUFFER, gridBuffer);
+      gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
+      gl.enableVertexAttribArray(attrPosition);
+      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
+        6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
+      gl.enableVertexAttribArray(attrColor);
+      gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
+      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
+        6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
     } gl.bindVertexArray(0);
   }
 
