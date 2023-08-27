@@ -144,7 +144,8 @@ class _MainPageState extends State<MainPage> {
                             ),
                             Expanded(
                               child: PcdSlider(
-                                pcapManager: _pcapManager, 
+                                enabled: _pcapManager != null,
+                                frameLength: _pcapManager?.length ?? 0,
                                 selectedFrame: selectedFrame, 
                                 onSelectedFrameChanged: (value) async {
                                   if (value == selectedFrame) {
