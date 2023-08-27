@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_pcd/dialog/fast_color_picker.dart';
 import 'package:flutter_pcd/pcap_manager.dart';
 import 'package:flutter_pcd/pcd_view.dart';
+import 'package:flutter_pcd/pcd_view/component/pcd_slider.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -61,111 +62,108 @@ class _MainPageState extends State<MainPage> {
                     child: CircleAvatar(
                       backgroundImage: AssetImage("assets/circleCSG.png"),
                     )),
-                Padding(
-                  padding: const EdgeInsets.all(4.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.max,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Flexible(
-                        child: Text(
-                          "Flutter Point Cloud Demo",
-                          style: Theme.of(context).textTheme.titleLarge,
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.max,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            "Flutter Point Cloud Demo",
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
                         ),
-                      ),
-                      Flexible(
-                          child: Row(
-                        children: [
-                          TextButton(
-                            child: const Text("File"),
-                            onPressed: () async {
-                              const typeGroup = XTypeGroup(
-                                label: "point cloud(xt32)",
-                                extensions: ["pcap"],
-                              );
-                              final file = await openFile(
-                                  acceptedTypeGroups: [typeGroup]);
-                              if (file == null) {
-                                print("no file selected");
-                                return;
-                              }
-                              final path = file.path;
-                              final tempDir = await getTemporaryDirectory();
-                              _pcapManager = PcapManager(tempDir.path);
-                              _pcapManager!.addListener(() async {
-                                if (_pcapManager!.length > 0 &&
-                                    _dataSource.points.isEmpty) {
-                                  _vertices = await _pcapManager![0];
-                                  _dataSource = PcdDataSource(
-                                      _pcapManager!.points[selectedFrame]);
+                        Flexible(
+                            child: Row(
+                          children: [
+                            TextButton(
+                              child: const Text("File"),
+                              onPressed: () async {
+                                const typeGroup = XTypeGroup(
+                                  label: "point cloud(xt32)",
+                                  extensions: ["pcap"],
+                                );
+                                final file = await openFile(
+                                    acceptedTypeGroups: [typeGroup]);
+                                if (file == null) {
+                                  print("no file selected");
+                                  return;
                                 }
-                                setState(() {});
-                              });
-                              final success = await _pcapManager!.run(path);
-                              if (!success) {
-                                print("failed to run pcap manager");
-                                return;
-                              }
-                            },
-                          ),
-                          TextButton(
-                            child: const Text("Edit"),
-                            onPressed: () {},
-                          ),
-                          TextButton(
-                            child: const Text("View"),
-                            onPressed: () {
-                              setState(() {
-                                sideState = SideState.none;
-                              });
-                            },
-                          ),
-                          TextButton(
-                            child: const Text("Table"),
-                            onPressed: () {
-                              setState(() {
-                                sideState = SideState.table;
-                              });
-                            },
-                          ),
-                          TextButton(
-                            child: const Text("Settings"),
-                            onPressed: () {
-                              setState(() {
-                                sideState = SideState.settings;
-                              });
-                            },
-                          ),
-                          TextButton(
-                            child: const Text("Help"),
-                            onPressed: () {},
-                          ),
-                          if ((_pcapManager?.length ?? 0) > 1)
-                            SizedBox(
-                              width: 1000,
-                              child: Slider(
-                                value: selectedFrame.toDouble(),
-                                min: 0,
-                                max: _pcapManager!.length - 1,
-                                divisions: _pcapManager!.length - 1,
-                                onChanged: (value) async {
-                                  if (value.toInt() == selectedFrame) {
+                                final path = file.path;
+                                final tempDir = await getTemporaryDirectory();
+                                _pcapManager = PcapManager(tempDir.path);
+                                _pcapManager!.addListener(() async {
+                                  if (_pcapManager!.length > 0 &&
+                                      _dataSource.points.isEmpty) {
+                                    _vertices = await _pcapManager![0];
+                                    _dataSource = PcdDataSource(
+                                        _pcapManager!.points[selectedFrame]);
+                                  }
+                                  setState(() {});
+                                });
+                                final success = await _pcapManager!.run(path);
+                                if (!success) {
+                                  print("failed to run pcap manager");
+                                  return;
+                                }
+                              },
+                            ),
+                            TextButton(
+                              child: const Text("Edit"),
+                              onPressed: () {},
+                            ),
+                            TextButton(
+                              child: const Text("View"),
+                              onPressed: () {
+                                setState(() {
+                                  sideState = SideState.none;
+                                });
+                              },
+                            ),
+                            TextButton(
+                              child: const Text("Table"),
+                              onPressed: () {
+                                setState(() {
+                                  sideState = SideState.table;
+                                });
+                              },
+                            ),
+                            TextButton(
+                              child: const Text("Settings"),
+                              onPressed: () {
+                                setState(() {
+                                  sideState = SideState.settings;
+                                });
+                              },
+                            ),
+                            TextButton(
+                              child: const Text("Help"),
+                              onPressed: () {},
+                            ),
+                            Expanded(
+                              child: PcdSlider(
+                                pcapManager: _pcapManager, 
+                                selectedFrame: selectedFrame, 
+                                onSelectedFrameChanged: (value) async {
+                                  if (value == selectedFrame) {
                                     // 複数回同じ値が来る可能性がある
                                     return;
                                   }
-                                  selectedFrame = value.toInt();
-                                  _vertices =
-                                      await _pcapManager![selectedFrame];
+                                  selectedFrame = value;
+                                  _vertices = await _pcapManager![selectedFrame];
                                   setState(() {});
                                   _dataSource = PcdDataSource(
                                       _pcapManager!.points[selectedFrame]);
                                   setState(() {});
-                                },
+                                }
                               ),
                             )
-                        ],
-                      )),
-                    ],
+                          ],
+                        )),
+                      ],
+                    ),
                   ),
                 )
               ],
