@@ -7,6 +7,7 @@ import 'package:flutter_pcd/dialog/fast_color_picker.dart';
 import 'package:flutter_pcd/pcap_manager.dart';
 import 'package:flutter_pcd/pcd_view.dart';
 import 'package:flutter_pcd/pcd_view/component/pcd_slider.dart';
+import 'package:flutter_pcd/pcd_view/component/popup_text_button.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -138,10 +139,32 @@ class _MainPageState extends State<MainPage> {
                                 });
                               },
                             ),
-                            TextButton(
-                              child: const Text("Help"),
-                              onPressed: () {},
-                            ),
+                            PopupTextButton<String>(
+                              text: "Help",
+                              offset: Offset(0,-32), 
+                              items: const [
+                              PopupMenuItem(child: Text("About"), value: "about"),
+                              PopupMenuItem(child: Text("License"), value: "license"),
+                            ], onSelected: (value) {
+                              if (value == "about") {
+                                showAboutDialog(
+                                  context: context,
+                                  applicationIcon: const CircleAvatar(
+                                    backgroundImage: AssetImage("assets/circleCSG.png"),
+                                  ),
+                                  applicationName: "Flutter Point Cloud Demo",
+                                  applicationVersion: "0.0.1",
+                                  applicationLegalese: "© 2021 CircleCSG",
+                                );
+                              } else if (value == "license") {
+                                showLicensePage(
+                                  context: context,
+                                  applicationName: "Flutter Point Cloud Demo",
+                                  applicationVersion: "0.0.1",
+                                  applicationLegalese: "© 2021 CircleCSG",
+                                );
+                              }
+                            },),
                             Expanded(
                               child: PcdSlider(
                                 enabled: _pcapManager != null,
