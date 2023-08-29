@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_pcd/cube_view.dart';
 import 'package:flutter_pcd/main_page.dart';
 import 'package:flutter_pcd/pcap_page.dart';
+import 'package:flutter_pcd/resource_cleaner/resource_cleaner.dart';
 import 'package:flutter_pcd/stream_page.dart';
 import 'package:flutter_pcd/store_file_page.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  ResourceCleaner.instance.init();
   runApp(const MyApp());
 }
 

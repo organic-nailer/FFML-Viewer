@@ -8,10 +8,13 @@
 
 #include <file_selector_windows/file_selector_windows.h>
 #include <flutter_gl_windows/flutter_gl_windows_plugin.h>
+#include <flutter_window_close/flutter_window_close_plugin.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
   FileSelectorWindowsRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FileSelectorWindows"));
   FlutterGlWindowsPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("FlutterGlWindowsPlugin"));
+  FlutterWindowClosePluginRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("FlutterWindowClosePlugin"));
 }

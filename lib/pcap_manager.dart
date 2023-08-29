@@ -1,18 +1,21 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_pcd/bridge_definitions.dart';
 import 'package:flutter_pcd/ffi.dart';
+import 'package:flutter_pcd/resource_cleaner/resource_cleaner.dart';
 import 'package:uuid/uuid.dart';
 
-class PcapManager extends ChangeNotifier {
+class PcapManager extends ChangeNotifier with Cleanable {
   static int framesPerFragment = 8;
   
-  Stream<PcdFrame>? _pcdStream;
+  StreamSubscription<PcdFrame>? _pcdStreamSubscription;
   // final Map<int, PcdFragment> _cache = {};
   String localCachePath;
   // int nextFragmentKey = 0;
+  late File _cacheFile;
   late RandomAccessFile _readerFile;
   late RandomAccessFile _writerFile;
   List<int> frameStartOffsets = [];
@@ -20,13 +23,15 @@ class PcapManager extends ChangeNotifier {
   
   int get length => frameStartOffsets.length;
 
-  PcapManager(this.localCachePath);
+  PcapManager(this.localCachePath) {
+    registerToClean();
+  }
 
   Future<bool> run(String pcapFile) async {
     try {
-      final cacheFile = await File("$localCachePath/pcd_cache_${const Uuid().v4()}.bin");
-      _writerFile = await cacheFile.open(mode: FileMode.writeOnlyAppend);
-      _readerFile = await cacheFile.open(mode: FileMode.read);
+      _cacheFile = File("$localCachePath/pcd_cache_${const Uuid().v4()}.bin");
+      _writerFile = await _cacheFile.open(mode: FileMode.writeOnlyAppend);
+      _readerFile = await _cacheFile.open(mode: FileMode.read);
       final stream = api.readPcapStream(path: pcapFile);
       setStream(stream);
       return true;
@@ -37,17 +42,24 @@ class PcapManager extends ChangeNotifier {
   }
 
   void setStream(Stream<PcdFrame> stream) {
-    _pcdStream = stream;
-    _pcdStream!.listen(_pcdListener);
+    _pcdStreamSubscription?.cancel();
+    _pcdStreamSubscription = null;
+    _pcdStreamSubscription = stream.listen(_pcdListener);
   }
 
   @override
   void dispose() {
-    _pcdStream?.listen(null);
-    _pcdStream = null;
-    _readerFile.close();
-    _writerFile.close();
+    clean();
     super.dispose();
+  }
+
+  @override
+  Future<void> clean() async {
+    // await _pcdStreamSubscription?.cancel();
+    await _readerFile.close();
+    await _writerFile.close();
+    await _cacheFile.delete();
+    print("pcap manager files disposed");
   }
 
   void _pcdListener(PcdFrame fragment) {

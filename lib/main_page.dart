@@ -8,6 +8,7 @@ import 'package:flutter_pcd/pcap_manager.dart';
 import 'package:flutter_pcd/pcd_view.dart';
 import 'package:flutter_pcd/pcd_view/component/pcd_slider.dart';
 import 'package:flutter_pcd/pcd_view/component/popup_text_button.dart';
+import 'package:flutter_window_close/flutter_window_close.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -42,6 +43,7 @@ class _MainPageState extends State<MainPage> {
   @override
   void dispose() {
     _controller.dispose();
+    _pcapManager?.dispose();
     super.dispose();
   }
 

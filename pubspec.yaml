@@ -29,6 +29,9 @@ dependencies:
   udp: ^5.0.3
   material_color_utilities: ^0.5.0
   flutter_colorpicker: ^1.0.3
+  flutter_window_close:
+    git:
+      url: https://github.com/zonble/flutter_window_close
 
 dependency_overrides:
   flutter_gl_platform_interface:

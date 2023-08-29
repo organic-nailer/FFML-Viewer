@@ -427,6 +427,15 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_window_close:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: HEAD
+      resolved-ref: "709b359205969a3b054e7ff878f5c09aaf0d2ee0"
+      url: "https://github.com/zonble/flutter_window_close"
+    source: git
+    version: "0.2.2"
   freezed:
     dependency: "direct dev"
     description:
