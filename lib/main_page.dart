@@ -8,7 +8,6 @@ import 'package:flutter_pcd/pcap_manager.dart';
 import 'package:flutter_pcd/pcd_view.dart';
 import 'package:flutter_pcd/pcd_view/component/pcd_slider.dart';
 import 'package:flutter_pcd/pcd_view/component/popup_text_button.dart';
-import 'package:flutter_window_close/flutter_window_close.dart';
 import 'package:material_color_utilities/material_color_utilities.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -96,7 +95,9 @@ class _MainPageState extends State<MainPage> {
                                 }
                                 final path = file.path;
                                 final tempDir = await getTemporaryDirectory();
+                                _pcapManager?.dispose();
                                 _pcapManager = PcapManager(tempDir.path);
+                                selectedFrame = 0;
                                 _pcapManager!.addListener(() async {
                                   if (_pcapManager!.length > 0 &&
                                       _dataSource.points.isEmpty) {
