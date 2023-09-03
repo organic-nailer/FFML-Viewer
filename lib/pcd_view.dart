@@ -13,6 +13,7 @@ import 'package:vector_math/vector_math.dart' show Vector3, Vector4, Matrix4;
 class PcdView extends StatefulWidget {
   final Size canvasSize;
   final Float32List vertices;
+  final Float32List colors;
   final int maxPointNum;
   final double pointSize;
   final Color backgroundColor;
@@ -20,10 +21,11 @@ class PcdView extends StatefulWidget {
       {Key? key,
       required this.canvasSize,
       required this.vertices,
+      required this.colors,
       int? maxPointNum,
       this.pointSize = 1.0,
       this.backgroundColor = Colors.black})
-      : maxPointNum = maxPointNum ?? vertices.length ~/ 6, super(key: key);
+      : maxPointNum = maxPointNum ?? vertices.length ~/ 3, super(key: key);
 
   @override
   State<PcdView> createState() => _PcdViewState();
@@ -75,6 +77,9 @@ class _PcdViewState extends State<PcdView> {
     if (!_flutterGlPlugin.isInitialized || !_isInitialized) return;
     if (oldWidget.vertices != widget.vertices) {
       updateVertices(widget.vertices);
+    }
+    if (oldWidget.colors != widget.colors) {
+      updateColors(widget.colors);
     }
     if (oldWidget.canvasSize != widget.canvasSize) {
       _projectiveTransform = getProjectiveTransform(
@@ -194,7 +199,7 @@ class _PcdViewState extends State<PcdView> {
     await Future.delayed(const Duration(milliseconds: 100));
     final gl = _flutterGlPlugin.gl;
     await setupFBO();
-    await initGL(gl, widget.vertices);
+    await initGL(gl, widget.vertices, widget.colors);
     _isInitialized = true;
   }
 
@@ -262,7 +267,12 @@ class _PcdViewState extends State<PcdView> {
 
   void updateVertices(Float32List vertices) {
     final gl = _flutterGlPlugin.gl;
-    _vertexBufferManager.update(gl, vertices);
+    _vertexBufferManager.updateVertices(gl, vertices);
+  }
+
+  void updateColors(Float32List colors) {
+    final gl = _flutterGlPlugin.gl;
+    _vertexBufferManager.updateColors(gl, colors);
   }
 
   void viewZoom(double zoomNormalized, double mousePosX, double mousePosY) {
@@ -294,12 +304,12 @@ class _PcdViewState extends State<PcdView> {
     });
   }
 
-  Future<void> initGL(dynamic gl, Float32List vertices) async {
+  Future<void> initGL(dynamic gl, Float32List vertices, Float32List colors) async {
     _pcdProgram = PcdProgram(gl);
     _pcdProgram.use(gl);
 
     _vertexBufferManager =
-        VertexBufferManager(gl, _pcdProgram, vertices, widget.maxPointNum);
+        VertexBufferManager(gl, _pcdProgram, vertices, colors, widget.maxPointNum);
 
     // grid
     _grid = VeloGrid(gl, _pcdProgram);

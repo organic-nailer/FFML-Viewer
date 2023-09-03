@@ -20,10 +20,12 @@ abstract class Native {
 
 class PcdFrame {
   final Float32List vertices;
-  final Float32List points;
+  final Float32List colors;
+  final Float32List otherData;
 
   const PcdFrame({
     required this.vertices,
-    required this.points,
+    required this.colors,
+    required this.otherData,
   });
 }

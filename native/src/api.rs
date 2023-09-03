@@ -11,7 +11,8 @@ use super::pcap_parser::parse_packet_body;
 
 pub struct PcdFrame {
     pub vertices: Vec<f32>,
-    pub points: Vec<f32>,
+    pub colors: Vec<f32>,
+    pub other_data: Vec<f32>,
 }
 
 pub fn read_pcap_stream(stream: StreamSink<PcdFrame>, path: String) {

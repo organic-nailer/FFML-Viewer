@@ -20,6 +20,7 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   late Float32List _vertices;
+  late Float32List _colors;
   int counter = 0;
   double pointSize = 5;
   late TextEditingController _controller;
@@ -35,7 +36,9 @@ class _MainPageState extends State<MainPage> {
   @override
   void initState() {
     super.initState();
-    _vertices = genCube(10);
+    final cube = genCube(10);
+    _vertices = cube.$1;
+    _colors = cube.$2;
     _controller = TextEditingController(text: "$pointSize");
   }
 
@@ -101,9 +104,14 @@ class _MainPageState extends State<MainPage> {
                                 _pcapManager!.addListener(() async {
                                   if (_pcapManager!.length > 0 &&
                                       _dataSource.points.isEmpty) {
-                                    _vertices = await _pcapManager![0];
-                                    _dataSource = PcdDataSource(
-                                        _pcapManager!.points[selectedFrame]);
+                                    final frame = await _pcapManager!.getFrame(0);
+                                    if (frame == null) {
+                                      print("failed to get frame");
+                                      return;
+                                    }
+                                    _vertices = frame.vertices;
+                                    _colors = frame.colors;
+                                    _dataSource = PcdDataSource(_vertices);
                                   }
                                   setState(() {});
                                 });
@@ -179,11 +187,16 @@ class _MainPageState extends State<MainPage> {
                                     return;
                                   }
                                   selectedFrame = value;
-                                  _vertices = await _pcapManager![selectedFrame];
-                                  setState(() {});
-                                  _dataSource = PcdDataSource(
-                                      _pcapManager!.points[selectedFrame]);
-                                  setState(() {});
+                                  final frame = await _pcapManager!.getFrame(value);
+                                  if (frame == null) {
+                                    print("failed to get frame $value");
+                                    return;
+                                  }
+                                  _vertices = frame.vertices;
+                                  _colors = frame.colors;
+                                  setState(() { });
+                                  _dataSource = PcdDataSource(_vertices);
+                                  setState(() { });
                                 }
                               ),
                             )
@@ -210,7 +223,7 @@ class _MainPageState extends State<MainPage> {
                         return PcdView(
                           canvasSize: canvasSize,
                           vertices: _vertices,
-                          // colors: _colors.toDartList(),
+                          colors: _colors,
                           maxPointNum: maxPointNum,
                           backgroundColor: backgroundColor,
                           pointSize: pointSize,
@@ -401,8 +414,10 @@ class _MainPageState extends State<MainPage> {
                                             child: const Text("Update Cube"),
                                             onPressed: () {
                                               setState(() {
-                                                _vertices = genCube(
+                                                final cube = genCube(
                                                     Random().nextInt(20) + 10);
+                                                _vertices = cube.$1;
+                                                _colors = cube.$2;
                                               });
                                             },
                                           ),
@@ -443,23 +458,25 @@ class _MainPageState extends State<MainPage> {
   }
 }
 
-Float32List genCube(int sidePts) {
+(Float32List, Float32List) genCube(int sidePts) {
   // x y z
-  final result = Float32List(sidePts * sidePts * sidePts * 6);
+  final vertices = Float32List(sidePts * sidePts * sidePts * 3);
+  // r g b
+  final colors = Float32List(sidePts * sidePts * sidePts * 3);
   for (var x = 0; x < sidePts; x++) {
     for (var y = 0; y < sidePts; y++) {
       for (var z = 0; z < sidePts; z++) {
         final index = x * sidePts * sidePts + y * sidePts + z;
-        result[index * 6 + 0] = x / (sidePts - 1) - 0.5;
-        result[index * 6 + 1] = y / (sidePts - 1) - 0.5;
-        result[index * 6 + 2] = z / (sidePts - 1) - 0.5;
-        result[index * 6 + 3] = x / (sidePts - 1);
-        result[index * 6 + 4] = y / (sidePts - 1);
-        result[index * 6 + 5] = z / (sidePts - 1);
+        vertices[index * 3 + 0] = x / (sidePts - 1) - 0.5;
+        vertices[index * 3 + 1] = y / (sidePts - 1) - 0.5;
+        vertices[index * 3 + 2] = z / (sidePts - 1) - 0.5;
+        colors[index * 3 + 0] = x / (sidePts - 1);
+        colors[index * 3 + 1] = y / (sidePts - 1);
+        colors[index * 3 + 2] = z / (sidePts - 1);
       }
     }
   }
-  return result;
+  return (vertices, colors);
 }
 
 Color getSurfaceContainer(BuildContext context) {
@@ -522,7 +539,7 @@ class PcdDataSource extends DataTableSource {
   }
 
   @override
-  int get rowCount => points.length ~/ 9;
+  int get rowCount => 100;
 
   @override
   bool get isRowCountApproximate => false;

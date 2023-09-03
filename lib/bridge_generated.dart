@@ -75,11 +75,12 @@ class NativeImpl implements Native {
 
   PcdFrame _wire2api_pcd_frame(dynamic raw) {
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
     return PcdFrame(
       vertices: _wire2api_float_32_list(arr[0]),
-      points: _wire2api_float_32_list(arr[1]),
+      colors: _wire2api_float_32_list(arr[1]),
+      otherData: _wire2api_float_32_list(arr[2]),
     );
   }
 }
@@ -253,9 +254,9 @@ class NativeWire implements FlutterRustBridgeWireBase {
   }
 
   late final _new_uint_8_list_0Ptr = _lookup<
-      ffi.NativeFunction<
-          ffi.Pointer<wire_uint_8_list> Function(
-              ffi.Int32)>>('new_uint_8_list_0');
+          ffi
+          .NativeFunction<ffi.Pointer<wire_uint_8_list> Function(ffi.Int32)>>(
+      'new_uint_8_list_0');
   late final _new_uint_8_list_0 = _new_uint_8_list_0Ptr
       .asFunction<ffi.Pointer<wire_uint_8_list> Function(int)>();
 

@@ -29,6 +29,7 @@ class StreamPageState extends State<StreamPage> {
                   child: PcdView(
                     canvasSize: canvasSize, 
                     vertices: _vertices!,
+                    colors: Float32List(_vertices!.length),
                     backgroundColor: Colors.grey.shade600,
                     maxPointNum: 128000,
                     pointSize: _pointSize.toDouble(),

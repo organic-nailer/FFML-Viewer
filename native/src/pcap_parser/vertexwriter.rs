@@ -5,8 +5,9 @@ use colorgrad;
 use flutter_rust_bridge::StreamSink;
 
 pub struct VertexWriter {
-    pub buffer: Vec<f32>,
-    pub points: Vec<f32>,
+    pub vertices: Vec<f32>,
+    pub colors: Vec<f32>,
+    pub othre_data: Vec<f32>,
     previous_azimuth: u16,
     colormap: colorgrad::Gradient,
     stream: StreamSink<PcdFrame>,
@@ -16,8 +17,9 @@ impl VertexWriter {
     pub fn create(stream: StreamSink<PcdFrame>) -> Self {
         let colormap = colorgrad::turbo();
         Self {
-            buffer: Vec::new(),
-            points: Vec::new(),
+            vertices: Vec::new(),
+            colors: Vec::new(),
+            othre_data: Vec::new(),
             previous_azimuth: 0,
             colormap,
             stream,
@@ -26,43 +28,40 @@ impl VertexWriter {
 
     pub fn sink(&mut self) {
         let fragment = PcdFrame {
-            vertices: self.buffer.clone(),
-            // points: Vec::new(),
-            points: self.points.clone(),
+            vertices: self.vertices.clone(),
+            colors: self.colors.clone(),
+            other_data: self.othre_data.clone(),
         };
         self.stream.add(fragment);
-        self.buffer.clear();
-        self.points.clear();
+        self.vertices.clear();
+        self.colors.clear();
+        self.othre_data.clear();
     }
 }
 
 impl FrameWriter for VertexWriter {
     fn write_row(&mut self, row: VeloPoint) {
         if row.azimuth < self.previous_azimuth {
-            if !self.buffer.is_empty() {
+            if !self.vertices.is_empty() {
                 self.sink();
             }
         }
         self.previous_azimuth = row.azimuth;
         let color = self.colormap.at(row.reflectivity as f64 / 255.0);
-        let xyzrgb = [
-            row.x, row.y, row.z, 
-            color.r as f32, color.g as f32, color.b as f32
-        ];
-        self.buffer.extend(&xyzrgb);
-        self.points.extend(&[
+        self.vertices.extend(&[row.x,row.y,row.z]);
+        self.colors.extend(&[color.r as f32, color.g as f32, color.b as f32]);
+        self.othre_data.extend(&[
             row.reflectivity as f32,
             row.channel as f32,
             row.azimuth as f32,
             row.distance_m,
             row.timestamp as f32,
             row.vertical_angle,
-            row.x, row.y, row.z,
         ]);
     }
 
     fn finalize(&mut self) {
-        if !self.buffer.is_empty() {
+        if !self.vertices.is_empty() {
             self.sink();
         }
     }

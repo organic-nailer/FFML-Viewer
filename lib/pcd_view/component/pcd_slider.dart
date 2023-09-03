@@ -65,7 +65,7 @@ class _PcdSliderState extends State<PcdSlider> with SingleTickerProviderStateMix
           padding: EdgeInsets.zero,
           icon: const Icon(Icons.arrow_circle_left_outlined),
           color: Theme.of(context).colorScheme.primary,
-          onPressed: widget.enabled
+          onPressed: (widget.enabled && widget.selectedFrame > 0)
               ? () async {
                   await widget.onSelectedFrameChanged(widget.selectedFrame - 1);
                 }
@@ -108,7 +108,7 @@ class _PcdSliderState extends State<PcdSlider> with SingleTickerProviderStateMix
           padding: EdgeInsets.zero,
           icon: const Icon(Icons.arrow_circle_right_outlined),
           color: Theme.of(context).colorScheme.primary,
-          onPressed: widget.enabled
+          onPressed: (widget.enabled && widget.selectedFrame < widget.frameLength - 1)
               ? () async {
                   await widget.onSelectedFrameChanged(widget.selectedFrame + 1);
                 }

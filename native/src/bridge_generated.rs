@@ -93,7 +93,8 @@ impl support::IntoDart for PcdFrame {
     fn into_dart(self) -> support::DartAbi {
         vec![
             self.vertices.into_into_dart().into_dart(),
-            self.points.into_into_dart().into_dart(),
+            self.colors.into_into_dart().into_dart(),
+            self.other_data.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
