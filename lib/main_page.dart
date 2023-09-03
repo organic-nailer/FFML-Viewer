@@ -21,6 +21,7 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   late Float32List _vertices;
   late Float32List _colors;
+
   int counter = 0;
   double pointSize = 5;
   late TextEditingController _controller;
@@ -31,7 +32,7 @@ class _MainPageState extends State<MainPage> {
   int selectedFrame = 0;
   int maxPointNum = 128000;
   PcapManager? _pcapManager;
-  PcdDataSource _dataSource = PcdDataSource(Float32List(0));
+  PcdDataSource _dataSource = PcdDataSource(Float32List(0), Float32List(0));
 
   @override
   void initState() {
@@ -103,7 +104,7 @@ class _MainPageState extends State<MainPage> {
                                 selectedFrame = 0;
                                 _pcapManager!.addListener(() async {
                                   if (_pcapManager!.length > 0 &&
-                                      _dataSource.points.isEmpty) {
+                                      _dataSource.rowCount == 0) {
                                     final frame = await _pcapManager!.getFrame(0);
                                     if (frame == null) {
                                       print("failed to get frame");
@@ -111,7 +112,7 @@ class _MainPageState extends State<MainPage> {
                                     }
                                     _vertices = frame.vertices;
                                     _colors = frame.colors;
-                                    _dataSource = PcdDataSource(_vertices);
+                                    _dataSource = PcdDataSource(_vertices, frame.otherData);
                                   }
                                   setState(() {});
                                 });
@@ -195,7 +196,7 @@ class _MainPageState extends State<MainPage> {
                                   _vertices = frame.vertices;
                                   _colors = frame.colors;
                                   setState(() { });
-                                  _dataSource = PcdDataSource(_vertices);
+                                  _dataSource = PcdDataSource(_vertices, frame.otherData);
                                   setState(() { });
                                 }
                               ),
@@ -435,16 +436,20 @@ class _MainPageState extends State<MainPage> {
                           borderRadius: BorderRadius.circular(16),
                           child: Container(
                             color: getSurfaceContainerLowest(context),
-                            child: SingleChildScrollView(
-                              child: PaginatedDataTable(
-                                showCheckboxColumn: false,
-                                rowsPerPage: 100,
-                                columns: PcdDataSource.columns,
-                                source: _dataSource,
-                                headingRowHeight: 24,
-                                dataRowMaxHeight: 24,
-                                dataRowMinHeight: 24,
-                              ),
+                            child: ListView.builder(
+                              itemCount: _dataSource.rowCount + 2,
+                              itemBuilder: (context, index) {
+                                if (index == 0) {
+                                  return _dataSource.getHeader();
+                                }
+                                if (index == 1) {
+                                  return const Divider(
+                                    height: 1.0,
+                                    thickness: 1.0,
+                                  );
+                                }
+                                return _dataSource.getText(index-2) ?? const Text("-");
+                              },
                             ),
                           )),
                     )
@@ -500,50 +505,111 @@ enum SideState {
 }
 
 class PcdDataSource extends DataTableSource {
-  static const columns = [
-    DataColumn(label: Text("x")),
-    DataColumn(label: Text("y")),
-    DataColumn(label: Text("z")),
-    DataColumn(label: Text("adjustedtime")),
-    DataColumn(label: Text("azimuth")),
-    DataColumn(label: Text("distance_m")),
-    DataColumn(label: Text("intensity")),
-    DataColumn(label: Text("laser_id")),
-    DataColumn(label: Text("vertical_angle")),
+  static const _columns = <(String, double)>[
+    ("x", 48), // x
+    ("y", 48), // y
+    ("z", 48), // z
+    ("adjustedtime", 96), // adjustedtime
+    ("azimuth", 56), // azimuth
+    ("distance_m", 72), // distance_m
+    ("intensity", 72), // intensity
+    ("laser_id", 64), // laser_id
+    ("vertical_angle", 96), // vertical_angle
   ];
 
-  final Float32List points;
+  // x y z
+  final Float32List vertices;
+  // reflectivity channel azimuth distance_m timestamp vertical_angle
+  final Float32List others;
 
-  PcdDataSource(this.points);
+  PcdDataSource(this.vertices, this.others);
 
-  @override
-  DataRow? getRow(int index) {
-    if (index >= points.length) {
+  Widget getHeader() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: _columns.map((e) => PcdDataCell(e.$1, width: e.$2)).toList(),
+      ),
+    );
+  }
+
+  Widget? getText(int index) {
+    if (index >= vertices.length ~/ 3) {
       return null;
     }
-    final point = points.sublist(index * 9, index * 9 + 9);
-    return DataRow.byIndex(
-        index: index,
-        cells: [
-          DataCell(Text(point[6].toStringAsFixed(3))),
-          DataCell(Text(point[7].toStringAsFixed(3))),
-          DataCell(Text(point[8].toStringAsFixed(3))),
-          DataCell(Text("${point[4].toInt()}")),
-          DataCell(Text("${point[2].toInt()}")),
-          DataCell(Text(point[3].toStringAsFixed(3))),
-          DataCell(Text("${point[0].toInt()}")),
-          const DataCell(Text("-")),
-          const DataCell(Text("-")),
-        ],
-        onSelectChanged: (value) {});
+    final xyz = vertices.sublist(index * 3, index * 3 + 3);
+    final point = others.sublist(index * 6, index * 6 + 6);
+    return ColoredBox(
+      color: index % 2 == 0 ? Colors.blue.shade50 : Colors.transparent,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            PcdDataCell(xyz[0].toStringAsFixed(3),   width: _columns[0].$2), // x
+            PcdDataCell(xyz[1].toStringAsFixed(3),   width: _columns[1].$2), // y
+            PcdDataCell(xyz[2].toStringAsFixed(3),   width: _columns[2].$2), // z
+            PcdDataCell("${point[4].toInt()}",       width: _columns[3].$2), // adjustedtime
+            PcdDataCell("${point[2].toInt()}",       width: _columns[4].$2), // azimuth
+            PcdDataCell(point[3].toStringAsFixed(3), width: _columns[5].$2), // distance_m
+            PcdDataCell("${point[0].toInt()}",       width: _columns[6].$2), // intensity
+            PcdDataCell("${point[1].toInt()}",       width: _columns[7].$2), // laser_id
+            PcdDataCell("${point[5].toInt()}",       width: _columns[8].$2), // vertical_angle
+          ],
+        ),
+      ),
+    );
   }
 
   @override
-  int get rowCount => 100;
+  DataRow? getRow(int index) {
+    dPrint("get row $index");
+    if (index >= rowCount) {
+      return null;
+    }
+    final xyz = vertices.sublist(index * 3, index * 3 + 3);
+    final point = others.sublist(index * 6, index * 6 + 6);
+    return DataRow.byIndex(
+        index: index,
+        cells: [
+          DataCell(Text(xyz[0].toStringAsFixed(3))), // x
+          DataCell(Text(xyz[1].toStringAsFixed(3))), // y
+          DataCell(Text(xyz[2].toStringAsFixed(3))), // z
+          DataCell(Text("${point[4].toInt()}")), // adjustedtime
+          DataCell(Text("${point[2].toInt()}")), // azimuth
+          DataCell(Text(point[3].toStringAsFixed(3))), // distance_m
+          DataCell(Text("${point[0].toInt()}")), // intensity
+          DataCell(Text("${point[1].toInt()}")), // laser_id
+          DataCell(Text("${point[5].toInt()}")), // vertical_angle
+        ]);
+  }
+
+  @override
+  int get rowCount => vertices.length ~/ 3;
 
   @override
   bool get isRowCountApproximate => false;
 
   @override
   int get selectedRowCount => 0;
+}
+
+class PcdDataCell extends StatelessWidget {
+  final String text;
+  final double width;
+
+  const PcdDataCell(this.text, {Key? key, required this.width}) : super(key: key);
+
+  static const cellTextStyle = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    color: Colors.black,
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      child: Text(text, style: cellTextStyle, textAlign: TextAlign.end,),
+    );
+  }
 }
