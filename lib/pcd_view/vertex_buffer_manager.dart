@@ -8,7 +8,8 @@ class VertexBufferManager {
   late int _vao;
   late int _pointNum;
 
-  VertexBufferManager(dynamic gl, PcdProgram pcdProgram, Float32List vertices, Float32List colors, int maxPointNum) {
+  VertexBufferManager(dynamic gl, PcdProgram pcdProgram, Float32List vertices,
+      Float32List colors, int maxPointNum) {
     pcdProgram.use(gl);
 
     _pointNum = vertices.length ~/ 3;
@@ -17,20 +18,24 @@ class VertexBufferManager {
     gl.bindBuffer(gl.ARRAY_BUFFER, _vVertexBuffer);
     Float32Array initData = Float32Array(maxPointNum * 3);
     if (kIsWeb) {
-      gl.bufferData(gl.ARRAY_BUFFER, initData.length, initData, gl.DYNAMIC_DRAW);
+      gl.bufferData(
+          gl.ARRAY_BUFFER, initData.length, initData, gl.DYNAMIC_DRAW);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices, 0, vertices.length);
     } else {
-      gl.bufferData(gl.ARRAY_BUFFER, initData.lengthInBytes, initData, gl.DYNAMIC_DRAW);
+      gl.bufferData(
+          gl.ARRAY_BUFFER, initData.lengthInBytes, initData, gl.DYNAMIC_DRAW);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, vertices, 0, vertices.lengthInBytes);
     }
 
     _cVertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, _cVertexBuffer);
     if (kIsWeb) {
-      gl.bufferData(gl.ARRAY_BUFFER, initData.length, initData, gl.DYNAMIC_DRAW);
+      gl.bufferData(
+          gl.ARRAY_BUFFER, initData.length, initData, gl.DYNAMIC_DRAW);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, colors, 0, colors.length);
     } else {
-      gl.bufferData(gl.ARRAY_BUFFER, initData.lengthInBytes, initData, gl.DYNAMIC_DRAW);
+      gl.bufferData(
+          gl.ARRAY_BUFFER, initData.lengthInBytes, initData, gl.DYNAMIC_DRAW);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, colors, 0, colors.lengthInBytes);
     }
 
@@ -38,33 +43,39 @@ class VertexBufferManager {
     final attrColor = pcdProgram.getAttrColor(gl);
 
     _vao = gl.createVertexArray();
-    gl.bindVertexArray(_vao); {
+    gl.bindVertexArray(_vao);
+    {
       // なぜかこの順番で呼ぶと動く
       gl.bindBuffer(gl.ARRAY_BUFFER, _vVertexBuffer);
-      gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 3 * Float32List.bytesPerElement, 0);
+      gl.vertexAttribPointer(
+          attrPosition, 3, gl.FLOAT, false, 3 * Float32List.bytesPerElement, 0);
       gl.enableVertexAttribArray(attrPosition);
       gl.bindBuffer(gl.ARRAY_BUFFER, _cVertexBuffer);
-      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
-        3 * Float32List.bytesPerElement, 0);
+      gl.vertexAttribPointer(
+          attrColor, 3, gl.FLOAT, false, 3 * Float32List.bytesPerElement, 0);
       gl.enableVertexAttribArray(attrColor);
       gl.bindBuffer(gl.ARRAY_BUFFER, _vVertexBuffer);
-      gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 3 * Float32List.bytesPerElement, 0);
+      gl.vertexAttribPointer(
+          attrPosition, 3, gl.FLOAT, false, 3 * Float32List.bytesPerElement, 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, _cVertexBuffer);
-      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
-        3 * Float32List.bytesPerElement, 0);
+      gl.vertexAttribPointer(
+          attrColor, 3, gl.FLOAT, false, 3 * Float32List.bytesPerElement, 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, _vVertexBuffer);
-      gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 3 * Float32List.bytesPerElement, 0);
+      gl.vertexAttribPointer(
+          attrPosition, 3, gl.FLOAT, false, 3 * Float32List.bytesPerElement, 0);
       gl.enableVertexAttribArray(attrPosition);
       gl.bindBuffer(gl.ARRAY_BUFFER, _cVertexBuffer);
-      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
-        3 * Float32List.bytesPerElement, 0);
+      gl.vertexAttribPointer(
+          attrColor, 3, gl.FLOAT, false, 3 * Float32List.bytesPerElement, 0);
       gl.enableVertexAttribArray(attrColor);
       gl.bindBuffer(gl.ARRAY_BUFFER, _vVertexBuffer);
-      gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 3 * Float32List.bytesPerElement, 0);
+      gl.vertexAttribPointer(
+          attrPosition, 3, gl.FLOAT, false, 3 * Float32List.bytesPerElement, 0);
       gl.bindBuffer(gl.ARRAY_BUFFER, _cVertexBuffer);
-      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
-        3 * Float32List.bytesPerElement, 0);
-    } gl.bindVertexArray(0);
+      gl.vertexAttribPointer(
+          attrColor, 3, gl.FLOAT, false, 3 * Float32List.bytesPerElement, 0);
+    }
+    gl.bindVertexArray(0);
   }
 
   void updateVertices(dynamic gl, Float32List vertices) {

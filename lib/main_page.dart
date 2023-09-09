@@ -105,14 +105,16 @@ class _MainPageState extends State<MainPage> {
                                 _pcapManager!.addListener(() async {
                                   if (_pcapManager!.length > 0 &&
                                       _dataSource.rowCount == 0) {
-                                    final frame = await _pcapManager!.getFrame(0);
+                                    final frame =
+                                        await _pcapManager!.getFrame(0);
                                     if (frame == null) {
                                       print("failed to get frame");
                                       return;
                                     }
                                     _vertices = frame.vertices;
                                     _colors = frame.colors;
-                                    _dataSource = PcdDataSource(_vertices, frame.otherData);
+                                    _dataSource = PcdDataSource(
+                                        _vertices, frame.otherData);
                                   }
                                   setState(() {});
                                 });
@@ -153,53 +155,59 @@ class _MainPageState extends State<MainPage> {
                             ),
                             PopupTextButton<String>(
                               text: "Help",
-                              offset: Offset(0,-32), 
+                              offset: Offset(0, -32),
                               items: const [
-                              PopupMenuItem(child: Text("About"), value: "about"),
-                              PopupMenuItem(child: Text("License"), value: "license"),
-                            ], onSelected: (value) {
-                              if (value == "about") {
-                                showAboutDialog(
-                                  context: context,
-                                  applicationIcon: const CircleAvatar(
-                                    backgroundImage: AssetImage("assets/circleCSG.png"),
-                                  ),
-                                  applicationName: "Flutter Point Cloud Demo",
-                                  applicationVersion: "0.0.1",
-                                  applicationLegalese: "© 2021 CircleCSG",
-                                );
-                              } else if (value == "license") {
-                                showLicensePage(
-                                  context: context,
-                                  applicationName: "Flutter Point Cloud Demo",
-                                  applicationVersion: "0.0.1",
-                                  applicationLegalese: "© 2021 CircleCSG",
-                                );
-                              }
-                            },),
+                                PopupMenuItem(
+                                    child: Text("About"), value: "about"),
+                                PopupMenuItem(
+                                    child: Text("License"), value: "license"),
+                              ],
+                              onSelected: (value) {
+                                if (value == "about") {
+                                  showAboutDialog(
+                                    context: context,
+                                    applicationIcon: const CircleAvatar(
+                                      backgroundImage:
+                                          AssetImage("assets/circleCSG.png"),
+                                    ),
+                                    applicationName: "Flutter Point Cloud Demo",
+                                    applicationVersion: "0.0.1",
+                                    applicationLegalese: "© 2021 CircleCSG",
+                                  );
+                                } else if (value == "license") {
+                                  showLicensePage(
+                                    context: context,
+                                    applicationName: "Flutter Point Cloud Demo",
+                                    applicationVersion: "0.0.1",
+                                    applicationLegalese: "© 2021 CircleCSG",
+                                  );
+                                }
+                              },
+                            ),
                             Expanded(
                               child: PcdSlider(
-                                enabled: _pcapManager != null,
-                                frameLength: _pcapManager?.length ?? 0,
-                                selectedFrame: selectedFrame, 
-                                onSelectedFrameChanged: (value) async {
-                                  if (value == selectedFrame) {
-                                    // 複数回同じ値が来る可能性がある
-                                    return;
-                                  }
-                                  selectedFrame = value;
-                                  final frame = await _pcapManager!.getFrame(value);
-                                  if (frame == null) {
-                                    print("failed to get frame $value");
-                                    return;
-                                  }
-                                  _vertices = frame.vertices;
-                                  _colors = frame.colors;
-                                  setState(() { });
-                                  _dataSource = PcdDataSource(_vertices, frame.otherData);
-                                  setState(() { });
-                                }
-                              ),
+                                  enabled: _pcapManager != null,
+                                  frameLength: _pcapManager?.length ?? 0,
+                                  selectedFrame: selectedFrame,
+                                  onSelectedFrameChanged: (value) async {
+                                    if (value == selectedFrame) {
+                                      // 複数回同じ値が来る可能性がある
+                                      return;
+                                    }
+                                    selectedFrame = value;
+                                    final frame =
+                                        await _pcapManager!.getFrame(value);
+                                    if (frame == null) {
+                                      print("failed to get frame $value");
+                                      return;
+                                    }
+                                    _vertices = frame.vertices;
+                                    _colors = frame.colors;
+                                    setState(() {});
+                                    _dataSource = PcdDataSource(
+                                        _vertices, frame.otherData);
+                                    setState(() {});
+                                  }),
                             )
                           ],
                         )),
@@ -440,7 +448,7 @@ class _MainPageState extends State<MainPage> {
                               itemCount: _dataSource.rowCount + 2,
                               itemBuilder: (context, index) {
                                 if (index == 0) {
-                                  return _dataSource.getHeader();
+                                  return _dataSource.getHeader(context);
                                 }
                                 if (index == 1) {
                                   return const Divider(
@@ -448,7 +456,8 @@ class _MainPageState extends State<MainPage> {
                                     thickness: 1.0,
                                   );
                                 }
-                                return _dataSource.getText(index-2) ?? const Text("-");
+                                return _dataSource.getText(index - 2) ??
+                                    const Text("-");
                               },
                             ),
                           )),
@@ -524,11 +533,14 @@ class PcdDataSource extends DataTableSource {
 
   PcdDataSource(this.vertices, this.others);
 
-  Widget getHeader() {
-    return Padding(
+  Widget getHeader(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
-        children: _columns.map((e) => PcdDataCell(e.$1, width: e.$2)).toList(),
+        children: _columns
+            .map((e) => PcdDataHeader(e.$1, width: e.$2, color: primary))
+            .toList(),
       ),
     );
   }
@@ -540,20 +552,26 @@ class PcdDataSource extends DataTableSource {
     final xyz = vertices.sublist(index * 3, index * 3 + 3);
     final point = others.sublist(index * 6, index * 6 + 6);
     return ColoredBox(
-      color: index % 2 == 0 ? Colors.blue.shade50 : Colors.transparent,
+      color: index % 2 == 0 ? Colors.black12 : Colors.transparent,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
-            PcdDataCell(xyz[0].toStringAsFixed(3),   width: _columns[0].$2), // x
-            PcdDataCell(xyz[1].toStringAsFixed(3),   width: _columns[1].$2), // y
-            PcdDataCell(xyz[2].toStringAsFixed(3),   width: _columns[2].$2), // z
-            PcdDataCell("${point[4].toInt()}",       width: _columns[3].$2), // adjustedtime
-            PcdDataCell("${point[2].toInt()}",       width: _columns[4].$2), // azimuth
-            PcdDataCell(point[3].toStringAsFixed(3), width: _columns[5].$2), // distance_m
-            PcdDataCell("${point[0].toInt()}",       width: _columns[6].$2), // intensity
-            PcdDataCell("${point[1].toInt()}",       width: _columns[7].$2), // laser_id
-            PcdDataCell("${point[5].toInt()}",       width: _columns[8].$2), // vertical_angle
+            PcdDataCell(xyz[0].toStringAsFixed(3), width: _columns[0].$2), // x
+            PcdDataCell(xyz[1].toStringAsFixed(3), width: _columns[1].$2), // y
+            PcdDataCell(xyz[2].toStringAsFixed(3), width: _columns[2].$2), // z
+            PcdDataCell("${point[4].toInt()}",
+                width: _columns[3].$2), // adjustedtime
+            PcdDataCell("${point[2].toInt()}",
+                width: _columns[4].$2), // azimuth
+            PcdDataCell(point[3].toStringAsFixed(3),
+                width: _columns[5].$2), // distance_m
+            PcdDataCell("${point[0].toInt()}",
+                width: _columns[6].$2), // intensity
+            PcdDataCell("${point[1].toInt()}",
+                width: _columns[7].$2), // laser_id
+            PcdDataCell("${point[5].toInt()}",
+                width: _columns[8].$2), // vertical_angle
           ],
         ),
       ),
@@ -568,19 +586,17 @@ class PcdDataSource extends DataTableSource {
     }
     final xyz = vertices.sublist(index * 3, index * 3 + 3);
     final point = others.sublist(index * 6, index * 6 + 6);
-    return DataRow.byIndex(
-        index: index,
-        cells: [
-          DataCell(Text(xyz[0].toStringAsFixed(3))), // x
-          DataCell(Text(xyz[1].toStringAsFixed(3))), // y
-          DataCell(Text(xyz[2].toStringAsFixed(3))), // z
-          DataCell(Text("${point[4].toInt()}")), // adjustedtime
-          DataCell(Text("${point[2].toInt()}")), // azimuth
-          DataCell(Text(point[3].toStringAsFixed(3))), // distance_m
-          DataCell(Text("${point[0].toInt()}")), // intensity
-          DataCell(Text("${point[1].toInt()}")), // laser_id
-          DataCell(Text("${point[5].toInt()}")), // vertical_angle
-        ]);
+    return DataRow.byIndex(index: index, cells: [
+      DataCell(Text(xyz[0].toStringAsFixed(3))), // x
+      DataCell(Text(xyz[1].toStringAsFixed(3))), // y
+      DataCell(Text(xyz[2].toStringAsFixed(3))), // z
+      DataCell(Text("${point[4].toInt()}")), // adjustedtime
+      DataCell(Text("${point[2].toInt()}")), // azimuth
+      DataCell(Text(point[3].toStringAsFixed(3))), // distance_m
+      DataCell(Text("${point[0].toInt()}")), // intensity
+      DataCell(Text("${point[1].toInt()}")), // laser_id
+      DataCell(Text("${point[5].toInt()}")), // vertical_angle
+    ]);
   }
 
   @override
@@ -597,7 +613,8 @@ class PcdDataCell extends StatelessWidget {
   final String text;
   final double width;
 
-  const PcdDataCell(this.text, {Key? key, required this.width}) : super(key: key);
+  const PcdDataCell(this.text, {Key? key, required this.width})
+      : super(key: key);
 
   static const cellTextStyle = TextStyle(
     fontSize: 12,
@@ -609,7 +626,38 @@ class PcdDataCell extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: width,
-      child: Text(text, style: cellTextStyle, textAlign: TextAlign.end,),
+      child: Text(
+        text,
+        style: cellTextStyle,
+        textAlign: TextAlign.end,
+      ),
+    );
+  }
+}
+
+class PcdDataHeader extends StatelessWidget {
+  final String text;
+  final double width;
+  final Color color;
+
+  const PcdDataHeader(this.text,
+      {Key? key, required this.width, required this.color})
+      : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final cellTextStyle = TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.bold,
+      color: color,
+    );
+    return SizedBox(
+      width: width,
+      child: Text(
+        text,
+        style: cellTextStyle,
+        textAlign: TextAlign.center,
+      ),
     );
   }
 }

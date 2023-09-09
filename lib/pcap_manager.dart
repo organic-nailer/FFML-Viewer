@@ -22,12 +22,11 @@ class PcapManager extends ChangeNotifier with Cleanable {
   late _BinFileCache _oFileCache;
 
   int get length => min(
-    _vFileCache.length,
-    min(
-      _cFileCache.length,
-      _oFileCache.length, 
-    )
-  );
+      _vFileCache.length,
+      min(
+        _cFileCache.length,
+        _oFileCache.length,
+      ));
 
   PcapManager(this.localCachePath) {
     registerToClean();
@@ -35,7 +34,8 @@ class PcapManager extends ChangeNotifier with Cleanable {
 
   Future<bool> run(String pcapFile) async {
     try {
-      _vFileCache = _BinFileCache(localCachePath, debug: true, onUpdate: notifyListeners);
+      _vFileCache =
+          _BinFileCache(localCachePath, debug: true, onUpdate: notifyListeners);
       _cFileCache = _BinFileCache(localCachePath, onUpdate: notifyListeners);
       _oFileCache = _BinFileCache(localCachePath, onUpdate: notifyListeners);
       await (
@@ -141,7 +141,7 @@ class _BinFileCache {
   final void Function()? onUpdate;
   final bool debug;
 
-  _BinFileCache(this._dir, { this.debug = false, this.onUpdate });
+  _BinFileCache(this._dir, {this.debug = false, this.onUpdate});
 
   int get length => _offsets.length;
 
@@ -152,21 +152,22 @@ class _BinFileCache {
   }
 
   Future<void> add(Float32List data) async {
-    if (debug)
-      dPrint("add data: ${data.length}, ${_writeQueue.length}");
+    if (debug) dPrint("add data: ${data.length}, ${_writeQueue.length}");
     if (_writeQueue.isEmpty) {
-      _writeQueue.add(() async { await _add(data); });
+      _writeQueue.add(() async {
+        await _add(data);
+      });
       await _cleanQueue();
     } else {
-      if (debug)
-        dPrint("add to queue: ${_writeQueue.length}");
-      _writeQueue.add(() async { await _add(data); });
+      if (debug) dPrint("add to queue: ${_writeQueue.length}");
+      _writeQueue.add(() async {
+        await _add(data);
+      });
     }
   }
 
   Future<void> _add(Float32List data) async {
-    if (debug)
-      dPrint("write: ${_offsets.length}");
+    if (debug) dPrint("write: ${_offsets.length}");
     final length = await _writer.length();
     await _writer.writeFrom(data.buffer.asUint8List());
     _offsets.add(length);
@@ -174,8 +175,7 @@ class _BinFileCache {
   }
 
   Future<void> _cleanQueue() async {
-    if (debug)
-      dPrint("clean queue: ${_writeQueue.length}");
+    if (debug) dPrint("clean queue: ${_writeQueue.length}");
     // assert(_operation != null);
     assert(_writeQueue.isNotEmpty);
     await _writeQueue[0]();
@@ -190,8 +190,7 @@ class _BinFileCache {
       _readOperation = CancelableOperation.fromFuture(_getItem(index));
       return await _readOperation!.value;
     } else {
-      if (debug)
-        dPrint("read failed: ${_readOperation!.value}");
+      if (debug) dPrint("read failed: ${_readOperation!.value}");
       return null;
     }
   }

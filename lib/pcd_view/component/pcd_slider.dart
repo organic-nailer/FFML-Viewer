@@ -15,17 +15,18 @@ class PcdSlider extends StatefulWidget {
     required this.frameLength,
     this.enabled = true,
     required this.onSelectedFrameChanged,
-  }): assert(enabled ? frameLength > 0 : true), 
-      assert(selectedFrame >= 0),
-      assert(enabled ? selectedFrame < frameLength : true),
-      super(key: key);
+  })  : assert(enabled ? frameLength > 0 : true),
+        assert(selectedFrame >= 0),
+        assert(enabled ? selectedFrame < frameLength : true),
+        super(key: key);
 
   @override
   // ignore: library_private_types_in_public_api
   _PcdSliderState createState() => _PcdSliderState();
 }
 
-class _PcdSliderState extends State<PcdSlider> with SingleTickerProviderStateMixin {
+class _PcdSliderState extends State<PcdSlider>
+    with SingleTickerProviderStateMixin {
   bool _isPlaying = false;
   late AnimationController _playAnimationController;
   Timer? _playTimer;
@@ -88,9 +89,11 @@ class _PcdSliderState extends State<PcdSlider> with SingleTickerProviderStateMix
                   }
                   _isPlaying = !_isPlaying;
                   if (_isPlaying) {
-                    _playTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) async {
+                    _playTimer = Timer.periodic(
+                        const Duration(milliseconds: 100), (timer) async {
                       if (widget.selectedFrame < widget.frameLength - 1) {
-                        await widget.onSelectedFrameChanged(widget.selectedFrame + 1);
+                        await widget
+                            .onSelectedFrameChanged(widget.selectedFrame + 1);
                       } else {
                         _playAnimationController.reverse();
                         _isPlaying = !_isPlaying;
@@ -108,7 +111,8 @@ class _PcdSliderState extends State<PcdSlider> with SingleTickerProviderStateMix
           padding: EdgeInsets.zero,
           icon: const Icon(Icons.arrow_circle_right_outlined),
           color: Theme.of(context).colorScheme.primary,
-          onPressed: (widget.enabled && widget.selectedFrame < widget.frameLength - 1)
+          onPressed: (widget.enabled &&
+                  widget.selectedFrame < widget.frameLength - 1)
               ? () async {
                   await widget.onSelectedFrameChanged(widget.selectedFrame + 1);
                 }
@@ -129,7 +133,8 @@ class _PcdSliderState extends State<PcdSlider> with SingleTickerProviderStateMix
         SizedBox(
           width: 96,
           child: TextField(
-            controller: TextEditingController(text: widget.selectedFrame.toString()),
+            controller:
+                TextEditingController(text: widget.selectedFrame.toString()),
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
               border: const OutlineInputBorder(),

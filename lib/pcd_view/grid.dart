@@ -22,31 +22,37 @@ class VeloGrid implements GridBase {
     } else {
       gl.bufferData(gl.ARRAY_BUFFER, grid.lengthInBytes, grid, gl.STATIC_DRAW);
     }
-    
+
     final attrPosition = pcdProgram.getAttrPosition(gl);
     final attrColor = pcdProgram.getAttrColor(gl);
 
     _vao = gl.createVertexArray();
-    gl.bindVertexArray(_vao); {
+    gl.bindVertexArray(_vao);
+    {
       gl.bindBuffer(gl.ARRAY_BUFFER, gridBuffer);
-      gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
+      gl.vertexAttribPointer(
+          attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
       gl.enableVertexAttribArray(attrPosition);
-      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
-        6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
+      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false,
+          6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
       gl.enableVertexAttribArray(attrColor);
-      gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
-      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
-        6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
+      gl.vertexAttribPointer(
+          attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
+      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false,
+          6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
       gl.bindBuffer(gl.ARRAY_BUFFER, gridBuffer);
-      gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
+      gl.vertexAttribPointer(
+          attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
       gl.enableVertexAttribArray(attrPosition);
-      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
-        6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
+      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false,
+          6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
       gl.enableVertexAttribArray(attrColor);
-      gl.vertexAttribPointer(attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
-      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false, 
-        6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
-    } gl.bindVertexArray(0);
+      gl.vertexAttribPointer(
+          attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
+      gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false,
+          6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
+    }
+    gl.bindVertexArray(0);
   }
 
   @override
@@ -62,22 +68,36 @@ Float32List _genGrid() {
   const z = 0.0;
   List<double> genLineXY(double x0, double y0, double x1, double y1) {
     return [
-      x0, y0, z, color.red / 255, color.green / 255, color.blue / 255,
-      x1, y1, z, color.red / 255, color.green / 255, color.blue / 255,
+      x0,
+      y0,
+      z,
+      color.red / 255,
+      color.green / 255,
+      color.blue / 255,
+      x1,
+      y1,
+      z,
+      color.red / 255,
+      color.green / 255,
+      color.blue / 255,
     ];
   }
+
   List<double> genCircle(double cx, double cy, double r, int segments) {
     final result = <double>[];
     for (var i = 0; i < segments; i++) {
       final theta0 = 2 * math.pi * i / segments;
       final theta1 = 2 * math.pi * (i + 1) / segments;
       result.addAll(genLineXY(
-        cx + r * math.cos(theta0), cy + r * math.sin(theta0),
-        cx + r * math.cos(theta1), cy + r * math.sin(theta1),
+        cx + r * math.cos(theta0),
+        cy + r * math.sin(theta0),
+        cx + r * math.cos(theta1),
+        cy + r * math.sin(theta1),
       ));
     }
     return result;
   }
+
   const minX = -100;
   const maxX = 100;
   const minY = -100;
@@ -85,10 +105,12 @@ Float32List _genGrid() {
   const interval = 10;
   final result = <double>[];
   for (var x = minX; x <= maxX; x += interval) {
-    result.addAll(genLineXY(x.toDouble(), minY.toDouble(), x.toDouble(), maxY.toDouble()));
+    result.addAll(genLineXY(
+        x.toDouble(), minY.toDouble(), x.toDouble(), maxY.toDouble()));
   }
   for (var y = minY; y <= maxY; y += interval) {
-    result.addAll(genLineXY(minX.toDouble(), y.toDouble(), maxX.toDouble(), y.toDouble()));
+    result.addAll(genLineXY(
+        minX.toDouble(), y.toDouble(), maxX.toDouble(), y.toDouble()));
   }
   for (var r = 10; r <= 100; r += 10) {
     result.addAll(genCircle(0, 0, r.toDouble(), 100));

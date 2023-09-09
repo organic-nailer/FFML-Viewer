@@ -15,12 +15,15 @@ class FrameBuffer {
         gl.UNSIGNED_BYTE, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
+    gl.framebufferTexture2D(
+        gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
 
     final depthRBO = gl.createRenderbuffer();
     gl.bindRenderbuffer(gl.RENDERBUFFER, depthRBO);
-    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
-    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthRBO);
+    gl.renderbufferStorage(
+        gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+    gl.framebufferRenderbuffer(
+        gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depthRBO);
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, 0);
 

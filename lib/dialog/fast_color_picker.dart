@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
 class FastColorPicker extends StatefulWidget {
-  static Future<Color?> show(BuildContext context, Color recentColor, bool useAlpha) async {
+  static Future<Color?> show(
+      BuildContext context, Color recentColor, bool useAlpha) async {
     return showDialog<Color>(
       context: context,
-      builder: (context) => FastColorPicker(color: recentColor, useAlpha: useAlpha),
+      builder: (context) =>
+          FastColorPicker(color: recentColor, useAlpha: useAlpha),
     );
   }
 
-  const FastColorPicker({Key? key, required this.color, this.useAlpha = false}) : super(key: key);
+  const FastColorPicker({Key? key, required this.color, this.useAlpha = false})
+      : super(key: key);
 
   final Color color;
   final bool useAlpha;

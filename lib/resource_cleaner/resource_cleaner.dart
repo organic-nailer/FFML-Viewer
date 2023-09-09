@@ -18,7 +18,6 @@ class ResourceCleaner {
   // constructor
   ResourceCleaner._internal();
 
-
   final List<Cleanable> _cleanables = [];
 
   void add(Cleanable cleanable) {

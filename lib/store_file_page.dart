@@ -33,13 +33,14 @@ class _StoreFilePageState extends State<StoreFilePage> {
                 _tempDirPath = dir.path;
                 final file = File('${dir.path}/test.bin');
 
-                final data = Float32List(1000*1000*100);
+                final data = Float32List(1000 * 1000 * 100);
                 for (var i = 0; i < data.length; i++) {
                   data[i] = i.toDouble();
                 }
                 final stopwatch = Stopwatch()..start();
-                await file.writeAsBytes([1,2,3,4,5,6,7,8,9,10]);
-                await file.writeAsBytes(data.buffer.asUint8List(), mode: FileMode.append);
+                await file.writeAsBytes([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+                await file.writeAsBytes(data.buffer.asUint8List(),
+                    mode: FileMode.append);
                 print('writeAsBytes: ${stopwatch.elapsedMilliseconds} ms');
               },
               child: const Text('Store File'),
@@ -52,8 +53,7 @@ class _StoreFilePageState extends State<StoreFilePage> {
                   final data = await file.readAsBytes();
                   print("data[:10]: ${data.sublist(0, 10)}");
                   print('readAsBytes: ${stopwatch.elapsedMilliseconds} ms');
-                }
-                else {
+                } else {
                   print('No file');
                 }
               },

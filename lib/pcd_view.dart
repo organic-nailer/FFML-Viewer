@@ -25,7 +25,8 @@ class PcdView extends StatefulWidget {
       int? maxPointNum,
       this.pointSize = 1.0,
       this.backgroundColor = Colors.black})
-      : maxPointNum = maxPointNum ?? vertices.length ~/ 3, super(key: key);
+      : maxPointNum = maxPointNum ?? vertices.length ~/ 3,
+        super(key: key);
 
   @override
   State<PcdView> createState() => _PcdViewState();
@@ -250,7 +251,7 @@ class _PcdViewState extends State<PcdView> {
       gl.clearColor(color.red / 255, color.green / 255, color.blue / 255, 1);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       // gl.drawArrays(gl.TRIANGLES, 0, 3);
-    
+
       // draw grid
       _grid.draw(gl);
 
@@ -304,12 +305,13 @@ class _PcdViewState extends State<PcdView> {
     });
   }
 
-  Future<void> initGL(dynamic gl, Float32List vertices, Float32List colors) async {
+  Future<void> initGL(
+      dynamic gl, Float32List vertices, Float32List colors) async {
     _pcdProgram = PcdProgram(gl);
     _pcdProgram.use(gl);
 
-    _vertexBufferManager =
-        VertexBufferManager(gl, _pcdProgram, vertices, colors, widget.maxPointNum);
+    _vertexBufferManager = VertexBufferManager(
+        gl, _pcdProgram, vertices, colors, widget.maxPointNum);
 
     // grid
     _grid = VeloGrid(gl, _pcdProgram);
@@ -340,9 +342,21 @@ Matrix4 getProjectiveTransform(
   final z = (far + near) / (near - far);
   final w = -2 * far * near / (near - far);
   return Matrix4(
-    f / aspect, 0, 0, 0,
-    0         , f, 0, 0,
-    0         , 0, z, w,
-    0         , 0,-1, 0,
+    f / aspect,
+    0,
+    0,
+    0,
+    0,
+    f,
+    0,
+    0,
+    0,
+    0,
+    z,
+    w,
+    0,
+    0,
+    -1,
+    0,
   ).transposed();
 }

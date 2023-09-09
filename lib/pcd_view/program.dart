@@ -42,7 +42,8 @@ class PcdProgram {
 
     var res = gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS);
     if (res == 0 || res == false) {
-      throw Exception("Error compiling shader: ${gl.getShaderInfoLog(vertexShader)}");
+      throw Exception(
+          "Error compiling shader: ${gl.getShaderInfoLog(vertexShader)}");
     }
 
     final fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
@@ -51,7 +52,8 @@ class PcdProgram {
 
     res = gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS);
     if (res == 0 || res == false) {
-      throw Exception("Error compiling shader: ${gl.getShaderInfoLog(fragmentShader)}");
+      throw Exception(
+          "Error compiling shader: ${gl.getShaderInfoLog(fragmentShader)}");
     }
 
     _glProgram = gl.createProgram();
