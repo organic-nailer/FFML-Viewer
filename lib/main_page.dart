@@ -259,7 +259,7 @@ class _MainPageState extends State<MainPage> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     SizedBox(
-                                      height: 56,
+                                      height: 36,
                                       child: Row(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.center,
@@ -272,15 +272,25 @@ class _MainPageState extends State<MainPage> {
                                               color: Theme.of(context)
                                                   .colorScheme
                                                   .primary,
-                                              size: 32,
+                                              size: 24,
                                             ),
                                           ),
                                           Text(
                                             "Settings",
                                             style: Theme.of(context)
                                                 .textTheme
-                                                .titleLarge,
+                                                .titleMedium,
                                           ),
+                                          const Spacer(),
+                                          IconButton(
+                                            icon: const Icon(Icons.close),
+                                            onPressed: () {
+                                              setState(() {
+                                                sideState = SideState.none;
+                                              });
+                                            },
+                                          ),
+                                          const SizedBox(width: 8,)
                                         ],
                                       ),
                                     ),
@@ -444,21 +454,67 @@ class _MainPageState extends State<MainPage> {
                           borderRadius: BorderRadius.circular(16),
                           child: Container(
                             color: getSurfaceContainerLowest(context),
-                            child: ListView.builder(
-                              itemCount: _dataSource.rowCount + 2,
-                              itemBuilder: (context, index) {
-                                if (index == 0) {
-                                  return _dataSource.getHeader(context);
-                                }
-                                if (index == 1) {
-                                  return const Divider(
-                                    height: 1.0,
-                                    thickness: 1.0,
-                                  );
-                                }
-                                return _dataSource.getText(index - 2) ??
-                                    const Text("-");
-                              },
+                            child: Column(
+                              children: [
+                                    SizedBox(
+                                      height: 36,
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        children: [
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 16, vertical: 8),
+                                            child: Icon(
+                                              Icons.table_chart_rounded,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
+                                              size: 24,
+                                            ),
+                                          ),
+                                          Text(
+                                            "Table",
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium,
+                                          ),
+                                          const Spacer(),
+                                          IconButton(
+                                            icon: const Icon(Icons.close),
+                                            onPressed: () {
+                                              setState(() {
+                                                sideState = SideState.none;
+                                              });
+                                            },
+                                          ),
+                                          const SizedBox(width: 8,)
+                                        ],
+                                      ),
+                                    ),
+                                    const Divider(
+                                      height: 1.0,
+                                      thickness: 1.0,
+                                    ),
+                                Expanded(
+                                  child: ListView.builder(
+                                    itemCount: _dataSource.rowCount + 2,
+                                    itemBuilder: (context, index) {
+                                      if (index == 0) {
+                                        return _dataSource.getHeader(context);
+                                      }
+                                      if (index == 1) {
+                                        return const Divider(
+                                          height: 1.0,
+                                          thickness: 1.0,
+                                        );
+                                      }
+                                      return _dataSource.getText(index - 2) ??
+                                          const Text("-");
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
                           )),
                     )
