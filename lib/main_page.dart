@@ -77,7 +77,7 @@ class _MainPageState extends State<MainPage> {
                       children: [
                         Flexible(
                           child: Text(
-                            "Flutter Point Cloud Demo",
+                            "FFML Viewer",
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
                         ),
@@ -170,14 +170,14 @@ class _MainPageState extends State<MainPage> {
                                       backgroundImage:
                                           AssetImage("assets/circleCSG.png"),
                                     ),
-                                    applicationName: "Flutter Point Cloud Demo",
+                                    applicationName: "FFML Viewer",
                                     applicationVersion: "0.0.1",
                                     applicationLegalese: "© 2021 CircleCSG",
                                   );
                                 } else if (value == "license") {
                                   showLicensePage(
                                     context: context,
-                                    applicationName: "Flutter Point Cloud Demo",
+                                    applicationName: "FFML Viewer",
                                     applicationVersion: "0.0.1",
                                     applicationLegalese: "© 2021 CircleCSG",
                                   );
