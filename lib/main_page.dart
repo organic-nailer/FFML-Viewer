@@ -54,475 +54,486 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: getSurfaceContainer(context),
-      body: Column(
-        mainAxisSize: MainAxisSize.max,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            height: 64,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: CircleAvatar(
-                      backgroundImage: AssetImage("assets/circleCSG.png"),
-                    )),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.max,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            "FFML Viewer",
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                        ),
-                        Flexible(
-                            child: Row(
-                          children: [
-                            TextButton(
-                              child: const Text("File"),
-                              onPressed: () async {
-                                const typeGroup = XTypeGroup(
-                                  label: "point cloud(xt32)",
-                                  extensions: ["pcap"],
-                                );
-                                final file = await openFile(
-                                    acceptedTypeGroups: [typeGroup]);
-                                if (file == null) {
-                                  print("no file selected");
-                                  return;
-                                }
-                                final path = file.path;
-                                final tempDir = await getTemporaryDirectory();
-                                _pcapManager?.dispose();
-                                _pcapManager = PcapManager(tempDir.path);
-                                selectedFrame = 0;
-                                _pcapManager!.addListener(() async {
-                                  if (_pcapManager!.length > 0 &&
-                                      _dataSource.rowCount == 0) {
-                                    final frame =
-                                        await _pcapManager!.getFrame(0);
-                                    if (frame == null) {
-                                      print("failed to get frame");
-                                      return;
-                                    }
-                                    _vertices = frame.vertices;
-                                    _colors = frame.colors;
-                                    _dataSource = PcdDataSource(
-                                        _vertices, frame.otherData);
-                                  }
-                                  setState(() {});
-                                });
-                                final success = await _pcapManager!.run(path);
-                                if (!success) {
-                                  print("failed to run pcap manager");
-                                  return;
-                                }
-                              },
-                            ),
-                            TextButton(
-                              child: const Text("Edit"),
-                              onPressed: () {},
-                            ),
-                            TextButton(
-                              child: const Text("View"),
-                              onPressed: () {
-                                setState(() {
-                                  sideState = SideState.none;
-                                });
-                              },
-                            ),
-                            TextButton(
-                              child: const Text("Table"),
-                              onPressed: () {
-                                setState(() {
-                                  sideState = SideState.table;
-                                });
-                              },
-                            ),
-                            TextButton(
-                              child: const Text("Settings"),
-                              onPressed: () {
-                                setState(() {
-                                  sideState = SideState.settings;
-                                });
-                              },
-                            ),
-                            PopupTextButton<String>(
-                              text: "Help",
-                              offset: Offset(0, -32),
-                              items: const [
-                                PopupMenuItem(
-                                    child: Text("About"), value: "about"),
-                                PopupMenuItem(
-                                    child: Text("License"), value: "license"),
-                              ],
-                              onSelected: (value) {
-                                if (value == "about") {
-                                  showAboutDialog(
-                                    context: context,
-                                    applicationIcon: const CircleAvatar(
-                                      backgroundImage:
-                                          AssetImage("assets/circleCSG.png"),
-                                    ),
-                                    applicationName: "FFML Viewer",
-                                    applicationVersion: "0.0.1",
-                                    applicationLegalese: "© 2021 CircleCSG",
-                                  );
-                                } else if (value == "license") {
-                                  showLicensePage(
-                                    context: context,
-                                    applicationName: "FFML Viewer",
-                                    applicationVersion: "0.0.1",
-                                    applicationLegalese: "© 2021 CircleCSG",
-                                  );
-                                }
-                              },
-                            ),
-                            Expanded(
-                              child: PcdSlider(
-                                  enabled: _pcapManager != null,
-                                  frameLength: _pcapManager?.length ?? 0,
-                                  selectedFrame: selectedFrame,
-                                  onSelectedFrameChanged: (value) async {
-                                    if (value == selectedFrame) {
-                                      // 複数回同じ値が来る可能性がある
-                                      return;
-                                    }
-                                    selectedFrame = value;
-                                    final frame =
-                                        await _pcapManager!.getFrame(value);
-                                    if (frame == null) {
-                                      print("failed to get frame $value");
-                                      return;
-                                    }
-                                    _vertices = frame.vertices;
-                                    _colors = frame.colors;
-                                    setState(() {});
-                                    _dataSource = PcdDataSource(
-                                        _vertices, frame.otherData);
-                                    setState(() {});
-                                  }),
-                            )
-                          ],
+      body: Builder(
+        builder: (context) {
+          return Column(
+            mainAxisSize: MainAxisSize.max,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: 64,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: CircleAvatar(
+                          backgroundImage: AssetImage("assets/circleCSG.png"),
                         )),
-                      ],
-                    ),
-                  ),
-                )
-              ],
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: LayoutBuilder(builder: (context, constraints) {
-                        final canvasSize =
-                            Size(constraints.maxWidth, constraints.maxHeight);
-                        return PcdView(
-                          canvasSize: canvasSize,
-                          vertices: _vertices,
-                          colors: _colors,
-                          maxPointNum: maxPointNum,
-                          backgroundColor: backgroundColor,
-                          pointSize: pointSize,
-                        );
-                      }),
-                    ),
-                  ),
-                  if (sideState != SideState.none)
-                    const SizedBox(
-                      width: 16,
-                    ),
-                  if (sideState == SideState.settings)
-                    SizedBox(
-                      width: 320,
-                      height: double.infinity,
-                      child: ClipRRect(
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.max,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                "FFML Viewer",
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                            ),
+                            Flexible(
+                                child: Row(
+                              children: [
+                                TextButton(
+                                  child: const Text("File"),
+                                  onPressed: () async {
+                                    const typeGroup = XTypeGroup(
+                                      label: "point cloud(xt32)",
+                                      extensions: ["pcap"],
+                                    );
+                                    final file = await openFile(
+                                        acceptedTypeGroups: [typeGroup]);
+                                    if (file == null) {
+                                      print("no file selected");
+                                      return;
+                                    }
+                                    final path = file.path;
+                                    final tempDir = await getTemporaryDirectory();
+                                    _pcapManager?.dispose();
+                                    _pcapManager = PcapManager(tempDir.path);
+                                    selectedFrame = 0;
+                                    _pcapManager!.addListener(() async {
+                                      if (_pcapManager!.length > 0 &&
+                                          _dataSource.rowCount == 0) {
+                                        final frame =
+                                            await _pcapManager!.getFrame(0);
+                                        if (frame == null) {
+                                          print("failed to get frame");
+                                          return;
+                                        }
+                                        _vertices = frame.vertices;
+                                        _colors = frame.colors;
+                                        _dataSource = PcdDataSource(
+                                            _vertices, frame.otherData);
+                                      }
+                                      setState(() {});
+                                    });
+                                    final success = await _pcapManager!.run(path);
+                                    if (!success) {
+                                      print("failed to run pcap manager");
+                                      return;
+                                    }
+                                  },
+                                ),
+                                TextButton(
+                                  child: const Text("Edit"),
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                            content: Text("Edit Button Is Not implemented"),
+                                            behavior: SnackBarBehavior.floating,
+                                            width: 500,
+                                        ));
+                                  },
+                                ),
+                                TextButton(
+                                  child: const Text("View"),
+                                  onPressed: () {
+                                    setState(() {
+                                      sideState = SideState.none;
+                                    });
+                                  },
+                                ),
+                                TextButton(
+                                  child: const Text("Table"),
+                                  onPressed: () {
+                                    setState(() {
+                                      sideState = SideState.table;
+                                    });
+                                  },
+                                ),
+                                TextButton(
+                                  child: const Text("Settings"),
+                                  onPressed: () {
+                                    setState(() {
+                                      sideState = SideState.settings;
+                                    });
+                                  },
+                                ),
+                                PopupTextButton<String>(
+                                  text: "Help",
+                                  offset: Offset(0, -32),
+                                  items: const [
+                                    PopupMenuItem(
+                                        child: Text("About"), value: "about"),
+                                    PopupMenuItem(
+                                        child: Text("License"), value: "license"),
+                                  ],
+                                  onSelected: (value) {
+                                    if (value == "about") {
+                                      showAboutDialog(
+                                        context: context,
+                                        applicationIcon: const CircleAvatar(
+                                          backgroundImage:
+                                              AssetImage("assets/circleCSG.png"),
+                                        ),
+                                        applicationName: "FFML Viewer",
+                                        applicationVersion: "0.0.1",
+                                        applicationLegalese: "© 2021 CircleCSG",
+                                      );
+                                    } else if (value == "license") {
+                                      showLicensePage(
+                                        context: context,
+                                        applicationName: "FFML Viewer",
+                                        applicationVersion: "0.0.1",
+                                        applicationLegalese: "© 2021 CircleCSG",
+                                      );
+                                    }
+                                  },
+                                ),
+                                Expanded(
+                                  child: PcdSlider(
+                                      enabled: _pcapManager != null,
+                                      frameLength: _pcapManager?.length ?? 0,
+                                      selectedFrame: selectedFrame,
+                                      onSelectedFrameChanged: (value) async {
+                                        if (value == selectedFrame) {
+                                          // 複数回同じ値が来る可能性がある
+                                          return;
+                                        }
+                                        selectedFrame = value;
+                                        final frame =
+                                            await _pcapManager!.getFrame(value);
+                                        if (frame == null) {
+                                          print("failed to get frame $value");
+                                          return;
+                                        }
+                                        _vertices = frame.vertices;
+                                        _colors = frame.colors;
+                                        setState(() {});
+                                        _dataSource = PcdDataSource(
+                                            _vertices, frame.otherData);
+                                        setState(() {});
+                                      }),
+                                )
+                              ],
+                            )),
+                          ],
+                        ),
+                      ),
+                    )
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          child: Container(
-                            color: getSurfaceContainerLowest(context),
-                            child: SingleChildScrollView(
-                              child: Column(
-                                  mainAxisSize: MainAxisSize.max,
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    SizedBox(
-                                      height: 36,
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 16, vertical: 8),
-                                            child: Icon(
-                                              Icons.settings,
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .primary,
-                                              size: 24,
-                                            ),
-                                          ),
-                                          Text(
-                                            "Settings",
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleMedium,
-                                          ),
-                                          const Spacer(),
-                                          IconButton(
-                                            icon: const Icon(Icons.close),
-                                            onPressed: () {
-                                              setState(() {
-                                                sideState = SideState.none;
-                                              });
-                                            },
-                                          ),
-                                          const SizedBox(width: 8,)
-                                        ],
-                                      ),
-                                    ),
-                                    const Divider(
-                                      height: 1.0,
-                                      thickness: 1.0,
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 8),
-                                      child: Text(
-                                        "Point Size",
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium,
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 8),
-                                      child: Row(
-                                        children: [
-                                          Text("1",
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodyMedium),
-                                          Expanded(
-                                            child: Slider(
-                                              value: pointSize,
-                                              min: 1,
-                                              max: 10,
-                                              divisions: 9,
-                                              onChanged: (value) {
-                                                setState(() {
-                                                  pointSize = value;
-                                                  _controller.text =
-                                                      "$pointSize";
-                                                });
-                                              },
-                                            ),
-                                          ),
-                                          Text("10",
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .bodyMedium),
-                                          const SizedBox(
-                                            width: 16,
-                                          ),
-                                          SizedBox(
-                                            width: 72,
-                                            child: TextField(
-                                              controller: _controller,
-                                              decoration: const InputDecoration(
-                                                border: OutlineInputBorder(),
-                                              ),
-                                              keyboardType:
-                                                  TextInputType.number,
-                                              onSubmitted: (value) {
-                                                try {
-                                                  setState(() {
-                                                    pointSize =
-                                                        double.parse(value)
-                                                            .floorToDouble()
-                                                            .clamp(1, 10);
-                                                    _controller.text =
-                                                        "$pointSize";
-                                                  });
-                                                } catch (e) {
-                                                  print(e);
-                                                }
-                                              },
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16, vertical: 8),
-                                      child: Text(
-                                        "Background Color",
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium,
-                                      ),
-                                    ),
-                                    Material(
-                                      child: InkWell(
-                                        child: SizedBox(
-                                          height: 56,
+                          child: LayoutBuilder(builder: (context, constraints) {
+                            final canvasSize =
+                                Size(constraints.maxWidth, constraints.maxHeight);
+                            return PcdView(
+                              canvasSize: canvasSize,
+                              vertices: _vertices,
+                              colors: _colors,
+                              maxPointNum: maxPointNum,
+                              backgroundColor: backgroundColor,
+                              pointSize: pointSize,
+                            );
+                          }),
+                        ),
+                      ),
+                      if (sideState != SideState.none)
+                        const SizedBox(
+                          width: 16,
+                        ),
+                      if (sideState == SideState.settings)
+                        SizedBox(
+                          width: 320,
+                          height: double.infinity,
+                          child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Container(
+                                color: getSurfaceContainerLowest(context),
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                      mainAxisSize: MainAxisSize.max,
+                                      mainAxisAlignment: MainAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        SizedBox(
+                                          height: 36,
                                           child: Row(
                                             crossAxisAlignment:
                                                 CrossAxisAlignment.center,
                                             children: [
                                               Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 16,
-                                                        vertical: 8),
-                                                child: CircleAvatar(
-                                                  backgroundColor:
-                                                      backgroundColor,
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 16, vertical: 8),
+                                                child: Icon(
+                                                  Icons.settings,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .primary,
+                                                  size: 24,
                                                 ),
                                               ),
                                               Text(
-                                                "#${backgroundColor.value.toRadixString(16).substring(2).toUpperCase()}",
+                                                "Settings",
                                                 style: Theme.of(context)
                                                     .textTheme
-                                                    .bodyMedium,
+                                                    .titleMedium,
                                               ),
+                                              const Spacer(),
+                                              IconButton(
+                                                icon: const Icon(Icons.close),
+                                                onPressed: () {
+                                                  setState(() {
+                                                    sideState = SideState.none;
+                                                  });
+                                                },
+                                              ),
+                                              const SizedBox(width: 8,)
                                             ],
                                           ),
                                         ),
-                                        onTap: () async {
-                                          final selectedColor =
-                                              await FastColorPicker.show(
-                                                  context,
-                                                  backgroundColor,
-                                                  false);
-                                          if (selectedColor != null) {
-                                            setState(() {
-                                              backgroundColor = selectedColor;
-                                            });
-                                          }
-                                        },
-                                      ),
-                                    ),
-                                    const Divider(
-                                      height: 1.0,
-                                      thickness: 1.0,
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(16.0),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          OutlinedButton(
-                                            child: const Text("Update Cube"),
-                                            onPressed: () {
-                                              setState(() {
-                                                final cube = genCube(
-                                                    Random().nextInt(20) + 10);
-                                                _vertices = cube.$1;
-                                                _colors = cube.$2;
-                                              });
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    )
-                                  ]),
-                            ),
-                          )),
-                    ),
-                  if (sideState == SideState.table)
-                    SizedBox(
-                      width: 640,
-                      child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Container(
-                            color: getSurfaceContainerLowest(context),
-                            child: Column(
-                              children: [
-                                    SizedBox(
-                                      height: 36,
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 16, vertical: 8),
-                                            child: Icon(
-                                              Icons.table_chart_rounded,
-                                              color: Theme.of(context)
-                                                  .colorScheme
-                                                  .primary,
-                                              size: 24,
-                                            ),
-                                          ),
-                                          Text(
-                                            "Table",
+                                        const Divider(
+                                          height: 1.0,
+                                          thickness: 1.0,
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
+                                          child: Text(
+                                            "Point Size",
                                             style: Theme.of(context)
                                                 .textTheme
                                                 .titleMedium,
                                           ),
-                                          const Spacer(),
-                                          IconButton(
-                                            icon: const Icon(Icons.close),
-                                            onPressed: () {
-                                              setState(() {
-                                                sideState = SideState.none;
-                                              });
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
+                                          child: Row(
+                                            children: [
+                                              Text("1",
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodyMedium),
+                                              Expanded(
+                                                child: Slider(
+                                                  value: pointSize,
+                                                  min: 1,
+                                                  max: 10,
+                                                  divisions: 9,
+                                                  onChanged: (value) {
+                                                    setState(() {
+                                                      pointSize = value;
+                                                      _controller.text =
+                                                          "$pointSize";
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                              Text("10",
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodyMedium),
+                                              const SizedBox(
+                                                width: 16,
+                                              ),
+                                              SizedBox(
+                                                width: 72,
+                                                child: TextField(
+                                                  controller: _controller,
+                                                  decoration: const InputDecoration(
+                                                    border: OutlineInputBorder(),
+                                                  ),
+                                                  keyboardType:
+                                                      TextInputType.number,
+                                                  onSubmitted: (value) {
+                                                    try {
+                                                      setState(() {
+                                                        pointSize =
+                                                            double.parse(value)
+                                                                .floorToDouble()
+                                                                .clamp(1, 10);
+                                                        _controller.text =
+                                                            "$pointSize";
+                                                      });
+                                                    } catch (e) {
+                                                      print(e);
+                                                    }
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
+                                          child: Text(
+                                            "Background Color",
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium,
+                                          ),
+                                        ),
+                                        Material(
+                                          child: InkWell(
+                                            child: SizedBox(
+                                              height: 56,
+                                              child: Row(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.center,
+                                                children: [
+                                                  Padding(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                            horizontal: 16,
+                                                            vertical: 8),
+                                                    child: CircleAvatar(
+                                                      backgroundColor:
+                                                          backgroundColor,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    "#${backgroundColor.value.toRadixString(16).substring(2).toUpperCase()}",
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .bodyMedium,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            onTap: () async {
+                                              final selectedColor =
+                                                  await FastColorPicker.show(
+                                                      context,
+                                                      backgroundColor,
+                                                      false);
+                                              if (selectedColor != null) {
+                                                setState(() {
+                                                  backgroundColor = selectedColor;
+                                                });
+                                              }
                                             },
                                           ),
-                                          const SizedBox(width: 8,)
-                                        ],
-                                      ),
-                                    ),
-                                    const Divider(
-                                      height: 1.0,
-                                      thickness: 1.0,
-                                    ),
-                                Expanded(
-                                  child: ListView.builder(
-                                    itemCount: _dataSource.rowCount + 2,
-                                    itemBuilder: (context, index) {
-                                      if (index == 0) {
-                                        return _dataSource.getHeader(context);
-                                      }
-                                      if (index == 1) {
-                                        return const Divider(
+                                        ),
+                                        const Divider(
                                           height: 1.0,
                                           thickness: 1.0,
-                                        );
-                                      }
-                                      return _dataSource.getText(index - 2) ??
-                                          const Text("-");
-                                    },
-                                  ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.all(16.0),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              OutlinedButton(
+                                                child: const Text("Update Cube"),
+                                                onPressed: () {
+                                                  setState(() {
+                                                    final cube = genCube(
+                                                        Random().nextInt(20) + 10);
+                                                    _vertices = cube.$1;
+                                                    _colors = cube.$2;
+                                                  });
+                                                },
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      ]),
                                 ),
-                              ],
-                            ),
-                          )),
-                    )
-                ],
+                              )),
+                        ),
+                      if (sideState == SideState.table)
+                        SizedBox(
+                          width: 640,
+                          child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Container(
+                                color: getSurfaceContainerLowest(context),
+                                child: Column(
+                                  children: [
+                                        SizedBox(
+                                          height: 36,
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            children: [
+                                              Padding(
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 16, vertical: 8),
+                                                child: Icon(
+                                                  Icons.table_chart_rounded,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .primary,
+                                                  size: 24,
+                                                ),
+                                              ),
+                                              Text(
+                                                "Table",
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleMedium,
+                                              ),
+                                              const Spacer(),
+                                              IconButton(
+                                                icon: const Icon(Icons.close),
+                                                onPressed: () {
+                                                  setState(() {
+                                                    sideState = SideState.none;
+                                                  });
+                                                },
+                                              ),
+                                              const SizedBox(width: 8,)
+                                            ],
+                                          ),
+                                        ),
+                                        const Divider(
+                                          height: 1.0,
+                                          thickness: 1.0,
+                                        ),
+                                    Expanded(
+                                      child: ListView.builder(
+                                        itemCount: _dataSource.rowCount + 2,
+                                        itemBuilder: (context, index) {
+                                          if (index == 0) {
+                                            return _dataSource.getHeader(context);
+                                          }
+                                          if (index == 1) {
+                                            return const Divider(
+                                              height: 1.0,
+                                              thickness: 1.0,
+                                            );
+                                          }
+                                          return _dataSource.getText(index - 2) ??
+                                              const Text("-");
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )),
+                        )
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        }
       ),
     );
   }
