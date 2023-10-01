@@ -12,6 +12,7 @@ class PcdView extends StatefulWidget {
   final Size canvasSize;
   final Float32List vertices;
   final Float32List colors;
+  final Float32List? masks;
   final int maxPointNum;
   final double pointSize;
   final Color backgroundColor;
@@ -20,6 +21,7 @@ class PcdView extends StatefulWidget {
       required this.canvasSize,
       required this.vertices,
       required this.colors,
+      this.masks,
       int? maxPointNum,
       this.pointSize = 1.0,
       this.backgroundColor = Colors.black})
@@ -120,7 +122,7 @@ class _PcdViewState extends State<PcdView> {
     await Future.delayed(const Duration(milliseconds: 100));
     final gl = _flutterGlPlugin.gl;
     await setupFBO();
-    await initGL(gl, widget.vertices, widget.colors);
+    await initGL(gl, widget.vertices, widget.colors, widget.masks);
     _isInitialized = true;
   }
 
@@ -194,12 +196,12 @@ class _PcdViewState extends State<PcdView> {
   }
 
   Future<void> initGL(
-      dynamic gl, Float32List vertices, Float32List colors) async {
+      dynamic gl, Float32List vertices, Float32List colors, Float32List? masks) async {
     _pcdProgram = PcdProgram(gl);
     _pcdProgram.use(gl);
 
     _vertexBufferManager = VertexBufferManager(
-        gl, _pcdProgram, vertices, colors, widget.maxPointNum);
+        gl, _pcdProgram, vertices, colors, masks, widget.maxPointNum);
 
     // grid
     _grid = VeloGrid(gl, _pcdProgram);

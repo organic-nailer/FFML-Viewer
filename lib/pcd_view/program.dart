@@ -6,13 +6,16 @@ const _vertexShaderSource = """
 #define varying out
 attribute vec3 a_Position;
 attribute vec3 a_Color;
+attribute float a_Mask;
 uniform mat4 transform;
 uniform float pointSize;
 varying vec3 v_Color;
+varying float v_Mask;
 void main() {
   gl_Position = transform * vec4(a_Position, 1.0);
   gl_PointSize = pointSize;
   v_Color = a_Color;
+  v_Mask = a_Mask;
 }
 """;
 
@@ -24,9 +27,10 @@ out highp vec4 pc_fragColor;
 
 precision highp float;
 varying vec3 v_Color;
+varying float v_Mask;
 
 void main() {
-  gl_FragColor = vec4(v_Color, 1.0);
+  gl_FragColor = vec4(v_Color, v_Mask);
 }
 """;
 
@@ -35,6 +39,8 @@ class PcdProgram {
   PcdProgram(dynamic gl) {
     gl.enable(0x8642); // GL_PROGRAM_POINT_SIZE
     gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     final vertexShader = gl.createShader(gl.VERTEX_SHADER);
     gl.shaderSource(vertexShader, _vertexShaderSource);
@@ -80,6 +86,10 @@ class PcdProgram {
 
   int getAttrColor(dynamic gl) {
     return gl.getAttribLocation(_glProgram, "a_Color");
+  }
+
+  int getAttrMask(dynamic gl) {
+    return gl.getAttribLocation(_glProgram, "a_Mask");
   }
 
   int getUniformTransform(dynamic gl) {

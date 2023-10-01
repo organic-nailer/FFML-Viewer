@@ -23,8 +23,21 @@ class VeloGrid implements GridBase {
       gl.bufferData(gl.ARRAY_BUFFER, grid.lengthInBytes, grid, gl.STATIC_DRAW);
     }
 
+    final gridMaskBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, gridMaskBuffer);
+    final gridMask = Float32List(_gridPointNum);
+    for (var i = 0; i < _gridPointNum; i++) {
+      gridMask[i] = 1.0;
+    }
+    if (kIsWeb) {
+      gl.bufferData(gl.ARRAY_BUFFER, gridMask.length, gridMask, gl.STATIC_DRAW);
+    } else {
+      gl.bufferData(gl.ARRAY_BUFFER, gridMask.lengthInBytes, gridMask, gl.STATIC_DRAW);
+    }
+
     final attrPosition = pcdProgram.getAttrPosition(gl);
     final attrColor = pcdProgram.getAttrColor(gl);
+    final attrMask = pcdProgram.getAttrMask(gl);
 
     _vao = gl.createVertexArray();
     gl.bindVertexArray(_vao);
@@ -51,6 +64,12 @@ class VeloGrid implements GridBase {
           attrPosition, 3, gl.FLOAT, false, 6 * Float32List.bytesPerElement, 0);
       gl.vertexAttribPointer(attrColor, 3, gl.FLOAT, false,
           6 * Float32List.bytesPerElement, 3 * Float32List.bytesPerElement);
+      gl.bindBuffer(gl.ARRAY_BUFFER, gridMaskBuffer);
+      gl.vertexAttribPointer(
+          attrMask, 1, gl.FLOAT, false, 1 * Float32List.bytesPerElement, 0);
+      gl.enableVertexAttribArray(attrMask);
+      gl.vertexAttribPointer(
+          attrMask, 1, gl.FLOAT, false, 1 * Float32List.bytesPerElement, 0);
     }
     gl.bindVertexArray(0);
   }

@@ -5,11 +5,12 @@ import 'package:flutter_pcd/pcd_view/program.dart';
 class VertexBufferManager {
   late dynamic _vVertexBuffer;
   late dynamic _cVertexBuffer;
+  late dynamic _mVertexBuffer;
   late int _vao;
   late int _pointNum;
 
   VertexBufferManager(dynamic gl, PcdProgram pcdProgram, Float32List vertices,
-      Float32List colors, int maxPointNum) {
+      Float32List colors, Float32List? masks, int maxPointNum) {
     pcdProgram.use(gl);
 
     _pointNum = vertices.length ~/ 3;
@@ -39,8 +40,27 @@ class VertexBufferManager {
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, colors, 0, colors.lengthInBytes);
     }
 
+    if (masks == null) {
+      masks = Float32List(_pointNum);
+      for (var i = 0; i < _pointNum; i++) {
+        masks[i] = 1.0;
+      }
+    }
+    _mVertexBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, _mVertexBuffer);
+    if (kIsWeb) {
+      gl.bufferData(
+          gl.ARRAY_BUFFER, initData.length, initData, gl.DYNAMIC_DRAW);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, masks, 0, masks.length);
+    } else {
+      gl.bufferData(
+          gl.ARRAY_BUFFER, initData.lengthInBytes, initData, gl.DYNAMIC_DRAW);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, masks, 0, masks.lengthInBytes);
+    }
+
     final attrPosition = pcdProgram.getAttrPosition(gl);
     final attrColor = pcdProgram.getAttrColor(gl);
+    final attrMask = pcdProgram.getAttrMask(gl);
 
     _vao = gl.createVertexArray();
     gl.bindVertexArray(_vao);
@@ -74,6 +94,14 @@ class VertexBufferManager {
       gl.bindBuffer(gl.ARRAY_BUFFER, _cVertexBuffer);
       gl.vertexAttribPointer(
           attrColor, 3, gl.FLOAT, false, 3 * Float32List.bytesPerElement, 0);
+      gl.enableVertexAttribArray(attrMask);
+      gl.bindBuffer(gl.ARRAY_BUFFER, _mVertexBuffer);
+      gl.vertexAttribPointer(
+          attrMask, 1, gl.FLOAT, false, 1 * Float32List.bytesPerElement, 0);
+      gl.enableVertexAttribArray(attrMask);
+      gl.bindBuffer(gl.ARRAY_BUFFER, _mVertexBuffer);
+      gl.vertexAttribPointer(
+          attrMask, 1, gl.FLOAT, false, 1 * Float32List.bytesPerElement, 0);
     }
     gl.bindVertexArray(0);
   }
@@ -96,6 +124,15 @@ class VertexBufferManager {
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, colors, 0, colors.length);
     } else {
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, colors, 0, colors.lengthInBytes);
+    }
+  }
+
+  void updateMasks(dynamic gl, Float32List masks) {
+    gl.bindBuffer(gl.ARRAY_BUFFER, _mVertexBuffer);
+    if (kIsWeb) {
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, masks, 0, masks.length);
+    } else {
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, masks, 0, masks.lengthInBytes);
     }
   }
 
