@@ -67,6 +67,9 @@ class _PcdViewState extends State<PcdView> {
     if (oldWidget.colors != widget.colors) {
       updateColors(widget.colors);
     }
+    if (oldWidget.masks != widget.masks) {
+      updateMasks(widget.masks!);
+    }
     if (oldWidget.canvasSize != widget.canvasSize) {
       controller.updateCanvasSize(widget.canvasSize);
       updateFBO(widget.canvasSize);
@@ -193,6 +196,11 @@ class _PcdViewState extends State<PcdView> {
   void updateColors(Float32List colors) {
     final gl = _flutterGlPlugin.gl;
     _vertexBufferManager.updateColors(gl, colors);
+  }
+
+  void updateMasks(Float32List masks) {
+    final gl = _flutterGlPlugin.gl;
+    _vertexBufferManager.updateMasks(gl, masks);
   }
 
   Future<void> initGL(
