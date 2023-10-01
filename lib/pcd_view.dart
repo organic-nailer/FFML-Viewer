@@ -1,14 +1,12 @@
-import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 
-import 'package:flutter/gestures.dart' hide Matrix4;
-import 'package:flutter/material.dart' hide Matrix4;
+import 'package:flutter/material.dart';
 import 'package:flutter_gl/flutter_gl.dart';
+import 'package:flutter_pcd/pcd_view/component/interactive_camera.dart';
 import 'package:flutter_pcd/pcd_view/frame_buffer.dart';
 import 'package:flutter_pcd/pcd_view/grid.dart';
 import 'package:flutter_pcd/pcd_view/program.dart';
 import 'package:flutter_pcd/pcd_view/vertex_buffer_manager.dart';
-import 'package:vector_math/vector_math.dart' show Vector3, Vector4, Matrix4;
 
 class PcdView extends StatefulWidget {
   final Size canvasSize;
@@ -40,35 +38,20 @@ class _PcdViewState extends State<PcdView> {
   late GridBase _grid;
   late Future<void> _glFuture;
   bool _isInitialized = false;
-  final Matrix4 _viewingTransform = getViewingTransform(
-    Vector3(0, 0, 3),
-    Vector3(0, 0, 0),
-    Vector3(0, 1, 0),
-  );
-  late Matrix4 _projectiveTransform;
-  double prevTrackPadZoomScale = 1.0;
-  Offset currentTrackPadZoomPosition = Offset.zero;
-
-  /// World Coordinate での原点中心の回転
-  Matrix4 rotOriginTransform = Matrix4.identity();
-
-  /// Camera Coordinate でのカメラの移動
-  Matrix4 cameraMoveTransform = Matrix4.identity();
+  late final InteractiveCameraController controller;
 
   @override
   void initState() {
     super.initState();
     _glFuture = setupGL();
-    _projectiveTransform = getProjectiveTransform(
-      30 * math.pi / 180,
-      widget.canvasSize.width / widget.canvasSize.height,
-      -0.01,
-      -600,
-    );
+    controller = InteractiveCameraController(widget.canvasSize)..addListener(() {
+      setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    controller.dispose();
     _flutterGlPlugin.dispose();
     super.dispose();
   }
@@ -83,12 +66,7 @@ class _PcdViewState extends State<PcdView> {
       updateColors(widget.colors);
     }
     if (oldWidget.canvasSize != widget.canvasSize) {
-      _projectiveTransform = getProjectiveTransform(
-        30 * math.pi / 180,
-        widget.canvasSize.width / widget.canvasSize.height,
-        -0.01,
-        -600,
-      );
+      controller.updateCanvasSize(widget.canvasSize);
       updateFBO(widget.canvasSize);
     }
     super.didUpdateWidget(oldWidget);
@@ -108,75 +86,17 @@ class _PcdViewState extends State<PcdView> {
         }
         if (snapshot.connectionState == ConnectionState.done) {
           render();
-          return Listener(
-            onPointerSignal: (signal) {
-              if (signal is PointerScrollEvent) {
-                // マウスホイールのスクロール
-                // タッチパッドの2本指スクロール
-                final zoom = signal.scrollDelta.dy;
-                const zoomFactor = 0.001;
-                viewZoom(
-                    zoom * zoomFactor, signal.position.dx, signal.position.dy);
-              } else if (signal is PointerScaleEvent) {
-                // タッチパッドの2本指ピンチ
-                final zoom = signal.scale;
-                const zoomFactor = 1;
-                viewZoom((zoom - 1) * zoomFactor, signal.position.dx,
-                    signal.position.dy);
-              }
-            },
-            child: GestureDetector(
-              onScaleStart: (details) {
-                prevTrackPadZoomScale = 1.0;
-                currentTrackPadZoomPosition = details.focalPoint;
-              },
-              onScaleUpdate: (details) {
-                if (details.scale == 1.0) {
-                  // rotate
-                  final move = details.focalPointDelta;
-                  final moveFactor = 90 / widget.canvasSize.height;
-                  final moveThetaX = move.dx * moveFactor * math.pi / 180;
-                  final moveThetaY = move.dy * moveFactor * math.pi / 180;
-                  final moveTransform = Matrix4.identity()
-                    ..rotateX(moveThetaY)
-                    ..rotateY(moveThetaX);
-                  setState(() {
-                    rotOriginTransform = moveTransform * rotOriginTransform;
-                  });
-                } else {
-                  // zoom
-                  if (kIsWeb) {
-                    final zoom = details.scale;
-                    const zoomFactor = 0.01;
-                    viewZoom((zoom - 1) * zoomFactor, details.focalPoint.dx,
-                        details.focalPoint.dy);
-                  } else {
-                    // Windowsの場合、なぜかscaleが前からの合算の値を渡してくるのでこちらがわでdeltaを計算する
-                    // さらにdetails.focalPointがバグっているので使わない
-                    final zoom = details.scale / prevTrackPadZoomScale;
-                    const zoomFactor = 1;
-                    viewZoom(
-                        (zoom - 1) * zoomFactor,
-                        currentTrackPadZoomPosition.dx,
-                        currentTrackPadZoomPosition.dy);
-                    prevTrackPadZoomScale = details.scale;
-                  }
-                }
-              },
-              onScaleEnd: (details) {
-                prevTrackPadZoomScale = 1.0;
-                currentTrackPadZoomPosition = Offset.zero;
-              },
-              child: Container(
-                width: widget.canvasSize.width,
-                height: widget.canvasSize.height,
-                color: widget.backgroundColor,
-                child: kIsWeb
-                    ? HtmlElementView(
-                        viewType: _flutterGlPlugin.textureId!.toString(),
-                      )
-                    : Texture(textureId: _flutterGlPlugin.textureId!),
-              ),
+          return InteractiveCamera(
+            controller: controller,
+            child: Container(
+              width: widget.canvasSize.width,
+              height: widget.canvasSize.height,
+              color: widget.backgroundColor,
+              child: kIsWeb
+                  ? HtmlElementView(
+                      viewType: _flutterGlPlugin.textureId!.toString(),
+                    )
+                  : Texture(textureId: _flutterGlPlugin.textureId!),
             ),
           );
         } else {
@@ -239,10 +159,7 @@ class _PcdViewState extends State<PcdView> {
     final color = widget.backgroundColor;
     // set transform
     final transformLoc = _pcdProgram.getUniformTransform(gl);
-    final transform = _projectiveTransform *
-        cameraMoveTransform *
-        _viewingTransform *
-        rotOriginTransform;
+    final transform = controller.synthesizedTransform;
     gl.uniformMatrix4fv(transformLoc, false, transform.storage);
     gl.uniform1f(_pcdProgram.getUniformPointSize(gl), widget.pointSize);
 
@@ -276,35 +193,6 @@ class _PcdViewState extends State<PcdView> {
     _vertexBufferManager.updateColors(gl, colors);
   }
 
-  void viewZoom(double zoomNormalized, double mousePosX, double mousePosY) {
-    // print("zoomNormalized: ${zoomNormalized}");
-    // ズーム時のマウス位置の方向にカメラを移動させる
-    final mouseClipX = mousePosX / widget.canvasSize.width * 2 - 1;
-    final mouseClipY = -(mousePosY / widget.canvasSize.height * 2 - 1);
-    final invMat = Matrix4.inverted(_projectiveTransform);
-    Vector4 forwarding = invMat * Vector4(mouseClipX, mouseClipY, 0, 1);
-    forwarding = forwarding / forwarding.w;
-    Vector3 forwarding3 = forwarding.xyz.normalized();
-
-    // カメラ位置が世界座標の原点を超えないよう移動量を制限する
-    final worldOrigin =
-        (cameraMoveTransform * _viewingTransform * rotOriginTransform) *
-            Vector4(0, 0, 0, 1);
-
-    // print("forwarding: ${forwarding3}");
-    // print("worldOrigin: ${worldOrigin}");
-    final d = forwarding3.dot(worldOrigin.xyz) / forwarding3.length;
-    // print("d: ${d}");
-    final moveFactor = d * 0.5;
-
-    final translate = Matrix4.identity();
-    translate.setTranslation(-forwarding3 * zoomNormalized * moveFactor);
-
-    setState(() {
-      cameraMoveTransform = translate * cameraMoveTransform;
-    });
-  }
-
   Future<void> initGL(
       dynamic gl, Float32List vertices, Float32List colors) async {
     _pcdProgram = PcdProgram(gl);
@@ -316,47 +204,4 @@ class _PcdViewState extends State<PcdView> {
     // grid
     _grid = VeloGrid(gl, _pcdProgram);
   }
-}
-
-/// LookAt方式のビュー変換行列を返す
-/// パラメータは世界座標系
-Matrix4 getViewingTransform(
-    Vector3 cameraPosition, Vector3 lookAt, Vector3 up) {
-  final zAxis = (cameraPosition - lookAt).normalized();
-  final xAxis = up.cross(zAxis).normalized();
-  final yAxis = zAxis.cross(xAxis).normalized();
-  final translation = Matrix4.identity();
-  translation.setTranslation(-cameraPosition);
-  final rotation = Matrix4.identity();
-  rotation.setRow(0, Vector4(xAxis.x, xAxis.y, xAxis.z, 0));
-  rotation.setRow(1, Vector4(yAxis.x, yAxis.y, yAxis.z, 0));
-  rotation.setRow(2, Vector4(zAxis.x, zAxis.y, zAxis.z, 0));
-
-  /// カメラ周りの回転なので平行移動を先に行う
-  return rotation * translation;
-}
-
-Matrix4 getProjectiveTransform(
-    double fovY, double aspect, double near, double far) {
-  final f = 1 / math.tan(fovY / 2);
-  final z = (far + near) / (near - far);
-  final w = -2 * far * near / (near - far);
-  return Matrix4(
-    f / aspect,
-    0,
-    0,
-    0,
-    0,
-    f,
-    0,
-    0,
-    0,
-    0,
-    z,
-    w,
-    0,
-    0,
-    -1,
-    0,
-  ).transposed();
 }
