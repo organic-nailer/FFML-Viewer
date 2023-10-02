@@ -10,7 +10,7 @@ class VertexBufferManager {
   late int _pointNum;
 
   VertexBufferManager(dynamic gl, PcdProgram pcdProgram, Float32List vertices,
-      Float32List colors, Float32List? masks, int maxPointNum) {
+      Float32List colors, Float32List masks, int maxPointNum) {
     pcdProgram.use(gl);
 
     _pointNum = vertices.length ~/ 3;
@@ -40,21 +40,15 @@ class VertexBufferManager {
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, colors, 0, colors.lengthInBytes);
     }
 
-    if (masks == null) {
-      masks = Float32List(_pointNum);
-      for (var i = 0; i < _pointNum; i++) {
-        masks[i] = 1.0;
-      }
-    }
     _mVertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, _mVertexBuffer);
     if (kIsWeb) {
       gl.bufferData(
-          gl.ARRAY_BUFFER, initData.length, initData, gl.DYNAMIC_DRAW);
+          gl.ARRAY_BUFFER, initData.length ~/ 3, initData, gl.DYNAMIC_DRAW);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, masks, 0, masks.length);
     } else {
       gl.bufferData(
-          gl.ARRAY_BUFFER, initData.lengthInBytes, initData, gl.DYNAMIC_DRAW);
+          gl.ARRAY_BUFFER, initData.lengthInBytes ~/ 3, initData, gl.DYNAMIC_DRAW);
       gl.bufferSubData(gl.ARRAY_BUFFER, 0, masks, 0, masks.lengthInBytes);
     }
 

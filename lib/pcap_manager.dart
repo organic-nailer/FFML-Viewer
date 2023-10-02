@@ -21,6 +21,8 @@ class PcapManager extends ChangeNotifier with Cleanable {
   late _BinFileCache _cFileCache;
   late _BinFileCache _oFileCache;
 
+  late Float32List _throughMask;
+
   int get length => min(
       _vFileCache.length,
       min(
@@ -28,8 +30,12 @@ class PcapManager extends ChangeNotifier with Cleanable {
         _oFileCache.length,
       ));
 
-  PcapManager(this.localCachePath) {
+  PcapManager(this.localCachePath, int maxPointNum) {
     registerToClean();
+    _throughMask = Float32List(maxPointNum);
+    for (var i = 0; i < maxPointNum; i++) {
+      _throughMask[i] = 1.0;
+    }
   }
 
   Future<bool> run(String pcapFile) async {
@@ -96,7 +102,7 @@ class PcapManager extends ChangeNotifier with Cleanable {
     });
   }
 
-  Future<PcdFrame?> getFrame(int index, {bool onlyVertices = false}) async {
+  Future<DisplayPcdFrame?> getFrame(int index, {bool onlyVertices = false}) async {
     try {
       if (onlyVertices) {
         final (vertices, colors) = await (
@@ -104,8 +110,15 @@ class PcapManager extends ChangeNotifier with Cleanable {
           _cFileCache[index],
         ).wait;
         if (vertices == null || colors == null) return null;
-        return PcdFrame(
-            vertices: vertices, colors: colors, otherData: Float32List(0));
+        final pointsNum = vertices.length ~/ 3;
+        return DisplayPcdFrame(
+            vertices: vertices, 
+            colors: colors, 
+            otherData: Float32List(0),
+            masks: _throughMask.sublist(0, pointsNum),
+            pointNum: pointsNum,
+            frameIndex: index
+        );
       } else {
         final (vertices, colors, otherData) = await (
           _vFileCache[index],
@@ -115,8 +128,14 @@ class PcapManager extends ChangeNotifier with Cleanable {
         if (vertices == null || colors == null || otherData == null) {
           return null;
         }
-        return PcdFrame(
-            vertices: vertices, colors: colors, otherData: otherData);
+        return DisplayPcdFrame(
+            vertices: vertices, 
+            colors: colors, 
+            otherData: otherData,
+            masks: _throughMask.sublist(0, vertices.length ~/ 3),
+            pointNum: vertices.length ~/ 3,
+            frameIndex: index
+        );
       }
     } catch (e) {
       print("pcap manager get frame error: $e");
@@ -224,4 +243,21 @@ class _BinFileCache {
 void dPrint(String message) {
   final timestamp = DateTime.now().toString();
   print("$timestamp: $message");
+}
+
+class DisplayPcdFrame {
+  final Float32List vertices;
+  final Float32List colors;
+  final Float32List otherData;
+  final Float32List masks;
+  final int pointNum;
+  final int frameIndex;
+
+  DisplayPcdFrame(
+      {required this.vertices,
+      required this.colors,
+      required this.otherData,
+      required this.masks,
+      required this.pointNum,
+      required this.frameIndex});
 }

@@ -12,7 +12,7 @@ class PcdView extends StatefulWidget {
   final Size canvasSize;
   final Float32List vertices;
   final Float32List colors;
-  final Float32List? masks;
+  final Float32List masks;
   final int maxPointNum;
   final double pointSize;
   final Color backgroundColor;
@@ -21,7 +21,7 @@ class PcdView extends StatefulWidget {
       required this.canvasSize,
       required this.vertices,
       required this.colors,
-      this.masks,
+      required this.masks,
       int? maxPointNum,
       this.pointSize = 1.0,
       this.backgroundColor = Colors.black})
@@ -47,7 +47,9 @@ class _PcdViewState extends State<PcdView> {
     super.initState();
     _glFuture = setupGL();
     controller = InteractiveCameraController(widget.canvasSize)..addListener(() {
-      setState(() {});
+      // setState(() {});
+      // print('update');
+      render();
     });
   }
 
@@ -75,6 +77,7 @@ class _PcdViewState extends State<PcdView> {
       updateFBO(widget.canvasSize);
     }
     super.didUpdateWidget(oldWidget);
+    render();
   }
 
   @override
@@ -90,7 +93,7 @@ class _PcdViewState extends State<PcdView> {
           return Text('Error: ${snapshot.error}');
         }
         if (snapshot.connectionState == ConnectionState.done) {
-          render();
+          // render();
           return InteractiveCamera(
             controller: controller,
             child: Container(
@@ -204,7 +207,7 @@ class _PcdViewState extends State<PcdView> {
   }
 
   Future<void> initGL(
-      dynamic gl, Float32List vertices, Float32List colors, Float32List? masks) async {
+      dynamic gl, Float32List vertices, Float32List colors, Float32List masks) async {
     _pcdProgram = PcdProgram(gl);
     _pcdProgram.use(gl);
 

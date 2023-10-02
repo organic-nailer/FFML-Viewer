@@ -84,7 +84,7 @@ class _PcapPageState extends State<PcapPage> {
           }
           final path = file.path;
           final tempDir = await getTemporaryDirectory();
-          _pcapManager = PcapManager(tempDir.path);
+          _pcapManager = PcapManager(tempDir.path, maxPointNum);
           _pcapManager!.addListener(() {
             setState(() {});
           });

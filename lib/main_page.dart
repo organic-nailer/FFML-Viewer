@@ -21,6 +21,7 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   late Float32List _vertices;
   late Float32List _colors;
+  late Float32List _masks;
 
   int counter = 0;
   double pointSize = 5;
@@ -32,7 +33,7 @@ class _MainPageState extends State<MainPage> {
   int selectedFrame = 0;
   int maxPointNum = 128000;
   PcapManager? _pcapManager;
-  PcdDataSource _dataSource = PcdDataSource(Float32List(0), Float32List(0));
+  PcdDataSource _dataSource = PcdDataSource(Float32List(0), Float32List(0), Float32List(0));
 
   @override
   void initState() {
@@ -40,6 +41,7 @@ class _MainPageState extends State<MainPage> {
     final cube = genCube(10);
     _vertices = cube.$1;
     _colors = cube.$2;
+    _masks = cube.$3;
     _controller = TextEditingController(text: "$pointSize");
   }
 
@@ -102,7 +104,7 @@ class _MainPageState extends State<MainPage> {
                                     final path = file.path;
                                     final tempDir = await getTemporaryDirectory();
                                     _pcapManager?.dispose();
-                                    _pcapManager = PcapManager(tempDir.path);
+                                    _pcapManager = PcapManager(tempDir.path, maxPointNum);
                                     selectedFrame = 0;
                                     _pcapManager!.addListener(() async {
                                       if (_pcapManager!.length > 0 &&
@@ -115,8 +117,9 @@ class _MainPageState extends State<MainPage> {
                                         }
                                         _vertices = frame.vertices;
                                         _colors = frame.colors;
+                                        _masks = frame.masks;
                                         _dataSource = PcdDataSource(
-                                            _vertices, frame.otherData);
+                                            _vertices, frame.otherData, frame.masks);
                                       }
                                       setState(() {});
                                     });
@@ -212,9 +215,10 @@ class _MainPageState extends State<MainPage> {
                                         }
                                         _vertices = frame.vertices;
                                         _colors = frame.colors;
+                                        _masks = frame.masks;
                                         setState(() {});
                                         _dataSource = PcdDataSource(
-                                            _vertices, frame.otherData);
+                                            _vertices, frame.otherData, frame.masks);
                                         setState(() {});
                                       }),
                                 )
@@ -242,6 +246,7 @@ class _MainPageState extends State<MainPage> {
                               canvasSize: canvasSize,
                               vertices: _vertices,
                               colors: _colors,
+                              masks: _masks,
                               maxPointNum: maxPointNum,
                               backgroundColor: backgroundColor,
                               pointSize: pointSize,
@@ -446,6 +451,7 @@ class _MainPageState extends State<MainPage> {
                                                         Random().nextInt(20) + 10);
                                                     _vertices = cube.$1;
                                                     _colors = cube.$2;
+                                                    _masks = cube.$3;
                                                   });
                                                 },
                                               ),
@@ -539,11 +545,13 @@ class _MainPageState extends State<MainPage> {
   }
 }
 
-(Float32List, Float32List) genCube(int sidePts) {
+(Float32List, Float32List, Float32List) genCube(int sidePts) {
   // x y z
   final vertices = Float32List(sidePts * sidePts * sidePts * 3);
   // r g b
   final colors = Float32List(sidePts * sidePts * sidePts * 3);
+  
+  final masks = Float32List(sidePts * sidePts * sidePts);
   for (var x = 0; x < sidePts; x++) {
     for (var y = 0; y < sidePts; y++) {
       for (var z = 0; z < sidePts; z++) {
@@ -554,10 +562,11 @@ class _MainPageState extends State<MainPage> {
         colors[index * 3 + 0] = x / (sidePts - 1);
         colors[index * 3 + 1] = y / (sidePts - 1);
         colors[index * 3 + 2] = z / (sidePts - 1);
+        masks[index] = 1;
       }
     }
   }
-  return (vertices, colors);
+  return (vertices, colors, masks);
 }
 
 Color getSurfaceContainer(BuildContext context) {
@@ -597,8 +606,13 @@ class PcdDataSource extends DataTableSource {
   final Float32List vertices;
   // reflectivity channel azimuth distance_m timestamp vertical_angle
   final Float32List others;
+  final Float32List masks;
 
-  PcdDataSource(this.vertices, this.others);
+  int pointNum = 0;
+
+  PcdDataSource(this.vertices, this.others, this.masks) {
+    pointNum = masks.fold(0, (previousValue, element) => previousValue + element.toInt());
+  }
 
   Widget getHeader(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
@@ -667,7 +681,7 @@ class PcdDataSource extends DataTableSource {
   }
 
   @override
-  int get rowCount => vertices.length ~/ 3;
+  int get rowCount => pointNum;
 
   @override
   bool get isRowCountApproximate => false;
