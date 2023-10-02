@@ -25,6 +25,7 @@ class _MainPageState extends State<MainPage> {
 
   int counter = 0;
   double pointSize = 5;
+  PcdFilter filter = PcdFilter();
   late TextEditingController _controller;
   SideState sideState = SideState.none;
 
@@ -110,7 +111,7 @@ class _MainPageState extends State<MainPage> {
                                       if (_pcapManager!.length > 0 &&
                                           _dataSource.rowCount == 0) {
                                         final frame =
-                                            await _pcapManager!.getFrame(0);
+                                            await _pcapManager!.getFrame(0, filter: filter);
                                         if (frame == null) {
                                           print("failed to get frame");
                                           return;
@@ -131,14 +132,11 @@ class _MainPageState extends State<MainPage> {
                                   },
                                 ),
                                 TextButton(
-                                  child: const Text("Edit"),
+                                  child: const Text("Filter"),
                                   onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                            content: Text("Edit Button Is Not implemented"),
-                                            behavior: SnackBarBehavior.floating,
-                                            width: 500,
-                                        ));
+                                    setState(() {
+                                      sideState = SideState.filter;
+                                    });
                                   },
                                 ),
                                 TextButton(
@@ -208,7 +206,7 @@ class _MainPageState extends State<MainPage> {
                                         }
                                         selectedFrame = value;
                                         final frame =
-                                            await _pcapManager!.getFrame(value);
+                                            await _pcapManager!.getFrame(value, filter: filter);
                                         if (frame == null) {
                                           print("failed to get frame $value");
                                           return;
@@ -532,7 +530,189 @@ class _MainPageState extends State<MainPage> {
                                   ],
                                 ),
                               )),
-                        )
+                        ),
+                      if (sideState == SideState.filter)
+                        SizedBox(
+                          width: 320,
+                          height: double.infinity,
+                          child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Container(
+                                color: getSurfaceContainerLowest(context),
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                      mainAxisSize: MainAxisSize.max,
+                                      mainAxisAlignment: MainAxisAlignment.start,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        SizedBox(
+                                          height: 36,
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            children: [
+                                              Padding(
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 16, vertical: 8),
+                                                child: Icon(
+                                                  Icons.settings,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .primary,
+                                                  size: 24,
+                                                ),
+                                              ),
+                                              Text(
+                                                "Filter",
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .titleMedium,
+                                              ),
+                                              const Spacer(),
+                                              IconButton(
+                                                icon: const Icon(Icons.close),
+                                                onPressed: () {
+                                                  setState(() {
+                                                    sideState = SideState.none;
+                                                  });
+                                                },
+                                              ),
+                                              const SizedBox(width: 8,)
+                                            ],
+                                          ),
+                                        ),
+                                        const Divider(
+                                          height: 1.0,
+                                          thickness: 1.0,
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
+                                          child: Text(
+                                            "distance_m ${filter.distance.start.toStringAsFixed(1)} - ${filter.distance.end.toStringAsFixed(1)}",
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium,
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: RangeSlider(
+                                                  values: filter.distance,
+                                                  min: 0,
+                                                  max: 300,
+                                                  // divisions: 9,
+                                                  onChanged: (value) {
+                                                    setState(() {
+                                                      filter.distance = value;
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
+                                          child: Text(
+                                            "intensity ${filter.intensity.start.toStringAsFixed(1)} - ${filter.intensity.end.toStringAsFixed(1)}",
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium,
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: RangeSlider(
+                                                  values: filter.intensity,
+                                                  min: 0,
+                                                  max: 255,
+                                                  // divisions: 9,
+                                                  onChanged: (value) {
+                                                    setState(() {
+                                                      filter.intensity = value;
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
+                                          child: Text(
+                                            "azimuth ${filter.azimuth.start.toStringAsFixed(1)} - ${filter.azimuth.end.toStringAsFixed(1)}",
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium,
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: RangeSlider(
+                                                  values: filter.azimuth,
+                                                  min: 0,
+                                                  max: 36000,
+                                                  // divisions: 9,
+                                                  onChanged: (value) {
+                                                    setState(() {
+                                                      filter.azimuth = value;
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
+                                          child: Text(
+                                            "altitude ${filter.altitude.start.toStringAsFixed(1)} - ${filter.altitude.end.toStringAsFixed(1)}",
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium,
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
+                                          child: Row(
+                                            children: [
+                                              Expanded(
+                                                child: RangeSlider(
+                                                  values: filter.altitude,
+                                                  min: -9000,
+                                                  max: 9000,
+                                                  // divisions: 9,
+                                                  onChanged: (value) {
+                                                    setState(() {
+                                                      filter.altitude = value;
+                                                    });
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ]),
+                                ),
+                              )),
+                        ),
                     ],
                   ),
                 ),
@@ -587,6 +767,7 @@ enum SideState {
   none,
   settings,
   table,
+  filter,
 }
 
 class PcdDataSource extends DataTableSource {
@@ -740,5 +921,19 @@ class PcdDataHeader extends StatelessWidget {
         textAlign: TextAlign.center,
       ),
     );
+  }
+}
+
+class PcdFilter {
+  late RangeValues distance;
+  late RangeValues intensity;
+  late RangeValues azimuth;
+  late RangeValues altitude;
+
+  PcdFilter() {
+    distance = const RangeValues(0, 300);
+    intensity = const RangeValues(0, 255);
+    azimuth = const RangeValues(0, 36000);
+    altitude = const RangeValues(-9000, 9000);
   }
 }
