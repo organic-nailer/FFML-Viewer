@@ -6,8 +6,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_pcd/bridge_definitions.dart';
 import 'package:flutter_pcd/ffi.dart';
-import 'package:flutter_pcd/ui/main_page.dart';
 import 'package:flutter_pcd/resource_cleaner/resource_cleaner.dart';
+import 'package:flutter_pcd/ui/screen/main_page/side_filter_notifier.dart';
 import 'package:uuid/uuid.dart';
 import 'package:async/async.dart';
 
