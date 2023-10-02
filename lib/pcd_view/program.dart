@@ -10,12 +10,15 @@ attribute float a_Mask;
 uniform mat4 transform;
 uniform float pointSize;
 varying vec3 v_Color;
-varying float v_Mask;
 void main() {
-  gl_Position = transform * vec4(a_Position, 1.0);
+  if (a_Mask < 0.5) {
+    gl_Position = vec4(2.0, 0.0, 0.0, 1.0);
+  }
+  else {
+    gl_Position = transform * vec4(a_Position, 1.0);
+  }
   gl_PointSize = pointSize;
   v_Color = a_Color;
-  v_Mask = a_Mask;
 }
 """;
 
@@ -27,10 +30,9 @@ out highp vec4 pc_fragColor;
 
 precision highp float;
 varying vec3 v_Color;
-varying float v_Mask;
 
 void main() {
-  gl_FragColor = vec4(v_Color, v_Mask);
+  gl_FragColor = vec4(v_Color, 1.0);
 }
 """;
 
