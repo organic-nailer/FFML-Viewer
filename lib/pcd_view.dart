@@ -47,9 +47,9 @@ class _PcdViewState extends State<PcdView> {
     super.initState();
     _glFuture = setupGL();
     controller = InteractiveCameraController(widget.canvasSize)..addListener(() {
-      // setState(() {});
+      setState(() {});
       // print('update');
-      render();
+      // render();
     });
   }
 
@@ -77,7 +77,7 @@ class _PcdViewState extends State<PcdView> {
       updateFBO(widget.canvasSize);
     }
     super.didUpdateWidget(oldWidget);
-    render();
+    // render();
   }
 
   @override
@@ -93,7 +93,7 @@ class _PcdViewState extends State<PcdView> {
           return Text('Error: ${snapshot.error}');
         }
         if (snapshot.connectionState == ConnectionState.done) {
-          // render();
+          render();
           return InteractiveCamera(
             controller: controller,
             child: Container(
