@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_pcd/pcd_view/program.dart';
+import 'package:flutter_pcd/ui/pcd_view/program.dart';
 
 abstract class GridBase {
   void draw(dynamic gl);

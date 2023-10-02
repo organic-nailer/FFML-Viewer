@@ -2,11 +2,11 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_gl/flutter_gl.dart';
-import 'package:flutter_pcd/pcd_view/component/interactive_camera.dart';
-import 'package:flutter_pcd/pcd_view/frame_buffer.dart';
-import 'package:flutter_pcd/pcd_view/grid.dart';
-import 'package:flutter_pcd/pcd_view/program.dart';
-import 'package:flutter_pcd/pcd_view/vertex_buffer_manager.dart';
+import 'package:flutter_pcd/ui/pcd_view/component/interactive_camera.dart';
+import 'package:flutter_pcd/ui/pcd_view/frame_buffer.dart';
+import 'package:flutter_pcd/ui/pcd_view/grid.dart';
+import 'package:flutter_pcd/ui/pcd_view/program.dart';
+import 'package:flutter_pcd/ui/pcd_view/vertex_buffer_manager.dart';
 
 class PcdView extends StatefulWidget {
   final Size canvasSize;

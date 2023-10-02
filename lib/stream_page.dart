@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_pcd/bridge_definitions.dart';
 import 'package:flutter_pcd/ffi.dart';
-import 'package:flutter_pcd/pcd_view.dart';
+import 'package:flutter_pcd/ui/pcd_view/pcd_view.dart';
 
 class StreamPage extends StatefulWidget {
   const StreamPage({Key? key}) : super(key: key);

@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_gl/flutter_gl.dart';
-import 'package:flutter_pcd/pcd_view/program.dart';
+import 'package:flutter_pcd/ui/pcd_view/program.dart';
 
 class VertexBufferManager {
   late dynamic _vVertexBuffer;

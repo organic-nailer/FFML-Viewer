@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_pcd/cube_view.dart';
-import 'package:flutter_pcd/main_page.dart';
+import 'package:flutter_pcd/ui/main_page.dart';
 import 'package:flutter_pcd/pcap_page.dart';
 import 'package:flutter_pcd/resource_cleaner/resource_cleaner.dart';
 import 'package:flutter_pcd/stream_page.dart';
