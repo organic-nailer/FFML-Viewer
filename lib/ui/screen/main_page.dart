@@ -9,9 +9,11 @@ import 'package:flutter_pcd/model/pcap_reader_model.dart';
 import 'package:flutter_pcd/ui/pcd_view/pcd_view.dart';
 import 'package:flutter_pcd/ui/pcd_view/component/pcd_slider.dart';
 import 'package:flutter_pcd/ui/pcd_view/component/popup_text_button.dart';
+import 'package:flutter_pcd/ui/screen/main_page/pcd_appearance_notifier.dart';
 import 'package:flutter_pcd/ui/screen/main_page/pcd_frame_notifier.dart';
 import 'package:flutter_pcd/ui/screen/main_page/side_filter_notifier.dart';
 import 'package:flutter_pcd/ui/screen/main_page/side_filter_view.dart';
+import 'package:flutter_pcd/ui/screen/main_page/side_settings_view.dart';
 import 'package:flutter_pcd/ui/screen/main_page/side_table_view.dart';
 import 'package:flutter_pcd/ui/theme/color_ext.dart';
 import 'package:path_provider/path_provider.dart';
@@ -26,6 +28,7 @@ class MainPage extends StatefulWidget {
 class MainPageState extends State<MainPage> {
   late final SideFilterNotifier _filterNotifier;
   late final PcdFrameNotifier _frameNotifier;
+  late final PcdAppearanceNotifier _appearanceNotifier;
   @override
   void initState() {
     super.initState();
@@ -34,6 +37,7 @@ class MainPageState extends State<MainPage> {
       PcapReaderModelImpl(),
       _filterNotifier
     );
+    _appearanceNotifier = PcdAppearanceNotifier();
   }
 
   @override
@@ -43,7 +47,10 @@ class MainPageState extends State<MainPage> {
       notifier: _filterNotifier,
       child: PcdFrameStateProvider(
         notifier: _frameNotifier,
-        child: const _MainPageInternal()
+        child: PcdAppearanceStateProvider(
+          notifier: _appearanceNotifier,
+          child: const _MainPageInternal()
+        )
       ),
     );
   }
@@ -57,44 +64,12 @@ class _MainPageInternal extends StatefulWidget {
 }
 
 class _MainPageInternalState extends State<_MainPageInternal> {
-  // late Float32List _vertices;
-  // late Float32List _colors;
-  // late Float32List _masks;
-
-  int counter = 0;
-  double pointSize = 5;
-  late TextEditingController _controller;
   SideState sideState = SideState.none;
-
-  Color backgroundColor = Colors.grey;
-
-  // int selectedFrame = 0;
-  // int maxPointNum = 128000;
-  // PcapManager? _pcapManager;
-  // PcdDataSource _dataSource =
-  //     PcdDataSource(Float32List(0), Float32List(0), Float32List(0));
-
-  @override
-  void initState() {
-    super.initState();
-    // final cube = genCube(10);
-    // _vertices = cube.$1;
-    // _colors = cube.$2;
-    // _masks = cube.$3;
-    _controller = TextEditingController(text: "$pointSize");
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    // _pcapManager?.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final filterNotifier = SideFilterStateProvider.of(context, listen: true);
     final frameNotifier = PcdFrameStateProvider.of(context, listen: true);
+    final appearanceNotifier = PcdAppearanceStateProvider.of(context, listen: true);
     return Scaffold(
       backgroundColor: getSurfaceContainer(context),
       body: Builder(builder: (context) {
@@ -241,8 +216,8 @@ class _MainPageInternalState extends State<_MainPageInternal> {
                             colors: frameNotifier.frame?.colors ?? Float32List(0),
                             masks: frameNotifier.mask ?? Float32List(0),
                             maxPointNum: 128000,
-                            backgroundColor: backgroundColor,
-                            pointSize: pointSize,
+                            backgroundColor: appearanceNotifier.backgroundColor,
+                            pointSize: appearanceNotifier.pointSize,
                           );
                         }),
                       ),
@@ -252,188 +227,12 @@ class _MainPageInternalState extends State<_MainPageInternal> {
                         width: 16,
                       ),
                     if (sideState == SideState.settings)
-                      SizedBox(
-                        width: 320,
-                        height: double.infinity,
-                        child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Container(
-                              color: getSurfaceContainerLowest(context),
-                              child: SingleChildScrollView(
-                                child: Column(
-                                    mainAxisSize: MainAxisSize.max,
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      SizedBox(
-                                        height: 36,
-                                        child: Row(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          children: [
-                                            Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 16,
-                                                      vertical: 8),
-                                              child: Icon(
-                                                Icons.settings,
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .primary,
-                                                size: 24,
-                                              ),
-                                            ),
-                                            Text(
-                                              "Settings",
-                                              style: Theme.of(context)
-                                                  .textTheme
-                                                  .titleMedium,
-                                            ),
-                                            const Spacer(),
-                                            IconButton(
-                                              icon: const Icon(Icons.close),
-                                              onPressed: () {
-                                                setState(() {
-                                                  sideState = SideState.none;
-                                                });
-                                              },
-                                            ),
-                                            const SizedBox(
-                                              width: 8,
-                                            )
-                                          ],
-                                        ),
-                                      ),
-                                      const Divider(
-                                        height: 1.0,
-                                        thickness: 1.0,
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 8),
-                                        child: Text(
-                                          "Point Size",
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium,
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 8),
-                                        child: Row(
-                                          children: [
-                                            Text("1",
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .bodyMedium),
-                                            Expanded(
-                                              child: Slider(
-                                                value: pointSize,
-                                                min: 1,
-                                                max: 10,
-                                                divisions: 9,
-                                                onChanged: (value) {
-                                                  setState(() {
-                                                    pointSize = value;
-                                                    _controller.text =
-                                                        "$pointSize";
-                                                  });
-                                                },
-                                              ),
-                                            ),
-                                            Text("10",
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .bodyMedium),
-                                            const SizedBox(
-                                              width: 16,
-                                            ),
-                                            SizedBox(
-                                              width: 72,
-                                              child: TextField(
-                                                controller: _controller,
-                                                decoration:
-                                                    const InputDecoration(
-                                                  border: OutlineInputBorder(),
-                                                ),
-                                                keyboardType:
-                                                    TextInputType.number,
-                                                onSubmitted: (value) {
-                                                  try {
-                                                    setState(() {
-                                                      pointSize =
-                                                          double.parse(value)
-                                                              .floorToDouble()
-                                                              .clamp(1, 10);
-                                                      _controller.text =
-                                                          "$pointSize";
-                                                    });
-                                                  } catch (e) {
-                                                    print(e);
-                                                  }
-                                                },
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 8),
-                                        child: Text(
-                                          "Background Color",
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleMedium,
-                                        ),
-                                      ),
-                                      Material(
-                                        child: InkWell(
-                                          child: SizedBox(
-                                            height: 56,
-                                            child: Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.center,
-                                              children: [
-                                                Padding(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 16,
-                                                      vertical: 8),
-                                                  child: CircleAvatar(
-                                                    backgroundColor:
-                                                        backgroundColor,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  "#${backgroundColor.value.toRadixString(16).substring(2).toUpperCase()}",
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .bodyMedium,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          onTap: () async {
-                                            final selectedColor =
-                                                await FastColorPicker.show(
-                                                    context,
-                                                    backgroundColor,
-                                                    false);
-                                            if (selectedColor != null) {
-                                              setState(() {
-                                                backgroundColor = selectedColor;
-                                              });
-                                            }
-                                          },
-                                        ),
-                                      ),
-                                    ]),
-                              ),
-                            )),
+                      SideSettingsView(
+                        onClose: () {
+                          setState(() {
+                            sideState = SideState.none;
+                          });
+                        },
                       ),
                     if (sideState == SideState.table)
                       SideTableView(
@@ -467,30 +266,6 @@ class _MainPageInternalState extends State<_MainPageInternal> {
       }),
     );
   }
-}
-
-(Float32List, Float32List, Float32List) genCube(int sidePts) {
-  // x y z
-  final vertices = Float32List(sidePts * sidePts * sidePts * 3);
-  // r g b
-  final colors = Float32List(sidePts * sidePts * sidePts * 3);
-
-  final masks = Float32List(sidePts * sidePts * sidePts);
-  for (var x = 0; x < sidePts; x++) {
-    for (var y = 0; y < sidePts; y++) {
-      for (var z = 0; z < sidePts; z++) {
-        final index = x * sidePts * sidePts + y * sidePts + z;
-        vertices[index * 3 + 0] = x / (sidePts - 1) - 0.5;
-        vertices[index * 3 + 1] = y / (sidePts - 1) - 0.5;
-        vertices[index * 3 + 2] = z / (sidePts - 1) - 0.5;
-        colors[index * 3 + 0] = x / (sidePts - 1);
-        colors[index * 3 + 1] = y / (sidePts - 1);
-        colors[index * 3 + 2] = z / (sidePts - 1);
-        masks[index] = 1;
-      }
-    }
-  }
-  return (vertices, colors, masks);
 }
 
 enum SideState {
