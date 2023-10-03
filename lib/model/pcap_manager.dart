@@ -5,6 +5,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_pcd/bridge_definitions.dart';
+import 'package:flutter_pcd/common/dprint.dart';
+import 'package:flutter_pcd/domain/pcd_filter.dart';
 import 'package:flutter_pcd/ffi.dart';
 import 'package:flutter_pcd/resource_cleaner/resource_cleaner.dart';
 import 'package:flutter_pcd/ui/screen/main_page/side_filter_notifier.dart';
@@ -116,7 +118,6 @@ class PcapManager extends ChangeNotifier with Cleanable {
             vertices: vertices, 
             colors: colors, 
             otherData: Float32List(0),
-            masks: _throughMask.sublist(0, pointsNum),
             pointNum: pointsNum,
             frameIndex: index
         );
@@ -129,37 +130,10 @@ class PcapManager extends ChangeNotifier with Cleanable {
         if (vertices == null || colors == null || otherData == null) {
           return null;
         }
-        var mask = _throughMask.sublist(0, vertices.length ~/ 3);
-        if (filter != null) {
-          for (var i = 0; i < vertices.length ~/ 3; i++) {
-            // intensity
-            if (otherData[i * 6] < filter.intensity.start || otherData[i * 6] > filter.intensity.end) {
-              mask[i] = 0.0;
-              continue;
-            }
-            // distance
-            if (otherData[i * 6 + 3] < filter.distance.start || otherData[i * 6 + 3] > filter.distance.end) {
-              mask[i] = 0.0;
-              continue;
-            }
-            // azimuth
-            if (otherData[i * 6 + 2] < filter.azimuth.start || otherData[i * 6 + 2] > filter.azimuth.end) {
-              mask[i] = 0.0;
-              continue;
-            }
-            // altitude
-            if (otherData[i * 6 + 1] < filter.altitude.start || otherData[i * 6 + 1] > filter.altitude.end) {
-              mask[i] = 0.0;
-              continue;
-            }
-            mask[i] = 1.0;
-          }
-        }
         return DisplayPcdFrame(
             vertices: vertices, 
             colors: colors, 
             otherData: otherData,
-            masks: mask,
             pointNum: vertices.length ~/ 3,
             frameIndex: index
         );
@@ -267,16 +241,10 @@ class _BinFileCache {
   }
 }
 
-void dPrint(String message) {
-  final timestamp = DateTime.now().toString();
-  print("$timestamp: $message");
-}
-
 class DisplayPcdFrame {
   final Float32List vertices;
   final Float32List colors;
   final Float32List otherData;
-  final Float32List masks;
   final int pointNum;
   final int frameIndex;
 
@@ -284,7 +252,6 @@ class DisplayPcdFrame {
       {required this.vertices,
       required this.colors,
       required this.otherData,
-      required this.masks,
       required this.pointNum,
       required this.frameIndex});
 }

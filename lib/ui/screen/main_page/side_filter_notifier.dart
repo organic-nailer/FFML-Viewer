@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_pcd/domain/pcd_filter.dart';
 
 class SideFilterNotifier extends ChangeNotifier {
   final PcdFilter _filter = PcdFilter();
@@ -35,24 +36,6 @@ class SideFilterStateProvider extends InheritedNotifier<SideFilterNotifier> {
     }
   }
 
-  SideFilterStateProvider({super.key, required super.child})
-      : super(notifier: SideFilterNotifier());
-}
-
-class PcdFilter {
-  static const RangeValues distanceMinMax = RangeValues(0, 300);
-  static const RangeValues intensityMinMax = RangeValues(0, 255);
-  static const RangeValues azimuthMinMax = RangeValues(0, 36000);
-  static const RangeValues altitudeMinMax = RangeValues(-9000, 9000);
-
-  RangeValues distance;
-  RangeValues intensity;
-  RangeValues azimuth;
-  RangeValues altitude;
-
-  PcdFilter()
-  : distance = distanceMinMax,
-    intensity = intensityMinMax,
-    azimuth = azimuthMinMax,
-    altitude = altitudeMinMax;
+  const SideFilterStateProvider({super.key, required super.child, required super.notifier})
+      : super();
 }
