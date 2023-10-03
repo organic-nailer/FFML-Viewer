@@ -1,10 +1,6 @@
-import 'dart:math';
 import 'dart:typed_data';
 
-import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_pcd/dialog/fast_color_picker.dart';
-import 'package:flutter_pcd/model/pcap_manager.dart';
 import 'package:flutter_pcd/model/pcap_reader_model.dart';
 import 'package:flutter_pcd/ui/pcd_view/pcd_view.dart';
 import 'package:flutter_pcd/ui/pcd_view/component/pcd_slider.dart';
@@ -16,7 +12,6 @@ import 'package:flutter_pcd/ui/screen/main_page/side_filter_view.dart';
 import 'package:flutter_pcd/ui/screen/main_page/side_settings_view.dart';
 import 'package:flutter_pcd/ui/screen/main_page/side_table_view.dart';
 import 'package:flutter_pcd/ui/theme/color_ext.dart';
-import 'package:path_provider/path_provider.dart';
 
 class MainPage extends StatefulWidget {
   const MainPage({Key? key}) : super(key: key);
@@ -33,25 +28,18 @@ class MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     _filterNotifier = SideFilterNotifier();
-    _frameNotifier = PcdFrameNotifier(
-      PcapReaderModelImpl(),
-      _filterNotifier
-    );
+    _frameNotifier = PcdFrameNotifier(PcapReaderModelImpl(), _filterNotifier);
     _appearanceNotifier = PcdAppearanceNotifier();
   }
 
   @override
   Widget build(BuildContext context) {
-    print("build main page");
     return SideFilterStateProvider(
       notifier: _filterNotifier,
       child: PcdFrameStateProvider(
-        notifier: _frameNotifier,
-        child: PcdAppearanceStateProvider(
-          notifier: _appearanceNotifier,
-          child: const _MainPageInternal()
-        )
-      ),
+          notifier: _frameNotifier,
+          child: PcdAppearanceStateProvider(
+              notifier: _appearanceNotifier, child: const _MainPageInternal())),
     );
   }
 }
@@ -69,7 +57,8 @@ class _MainPageInternalState extends State<_MainPageInternal> {
   @override
   Widget build(BuildContext context) {
     final frameNotifier = PcdFrameStateProvider.of(context, listen: true);
-    final appearanceNotifier = PcdAppearanceStateProvider.of(context, listen: true);
+    final appearanceNotifier =
+        PcdAppearanceStateProvider.of(context, listen: true);
     return Scaffold(
       backgroundColor: getSurfaceContainer(context),
       body: Builder(builder: (context) {
@@ -107,7 +96,8 @@ class _MainPageInternalState extends State<_MainPageInternal> {
                               TextButton(
                                 child: const Text("File"),
                                 onPressed: () async {
-                                  final result = await frameNotifier.selectPcapFile();
+                                  final result =
+                                      await frameNotifier.selectPcapFile();
                                   if (!result) {
                                     print("failed to select pcap file");
                                     return;
@@ -148,12 +138,12 @@ class _MainPageInternalState extends State<_MainPageInternal> {
                               ),
                               PopupTextButton<String>(
                                 text: "Help",
-                                offset: Offset(0, -32),
+                                offset: const Offset(0, -32),
                                 items: const [
                                   PopupMenuItem(
-                                      child: Text("About"), value: "about"),
+                                      value: "about", child: Text("About")),
                                   PopupMenuItem(
-                                      child: Text("License"), value: "license"),
+                                      value: "license", child: Text("License")),
                                 ],
                                 onSelected: (value) {
                                   if (value == "about") {
@@ -180,10 +170,14 @@ class _MainPageInternalState extends State<_MainPageInternal> {
                               Expanded(
                                 child: PcdSlider(
                                     enabled: frameNotifier.isEnabled,
-                                    frameLength: frameNotifier.isEnabled ? frameNotifier.frameCount : 0,
-                                    selectedFrame: frameNotifier.frame?.frameIndex ?? 0,
+                                    frameLength: frameNotifier.isEnabled
+                                        ? frameNotifier.frameCount
+                                        : 0,
+                                    selectedFrame:
+                                        frameNotifier.frame?.frameIndex ?? 0,
                                     onSelectedFrameChanged: (value) async {
-                                      if (value == frameNotifier.frame?.frameIndex) {
+                                      if (value ==
+                                          frameNotifier.frame?.frameIndex) {
                                         // 複数回同じ値が来る可能性がある
                                         return;
                                       }
@@ -212,8 +206,10 @@ class _MainPageInternalState extends State<_MainPageInternal> {
                               Size(constraints.maxWidth, constraints.maxHeight);
                           return PcdView(
                             canvasSize: canvasSize,
-                            vertices: frameNotifier.frame?.vertices ?? Float32List(0),
-                            colors: frameNotifier.frame?.colors ?? Float32List(0),
+                            vertices:
+                                frameNotifier.frame?.vertices ?? Float32List(0),
+                            colors:
+                                frameNotifier.frame?.colors ?? Float32List(0),
                             masks: frameNotifier.mask ?? Float32List(0),
                             maxPointNum: 128000,
                             backgroundColor: appearanceNotifier.backgroundColor,
@@ -236,13 +232,14 @@ class _MainPageInternalState extends State<_MainPageInternal> {
                       ),
                     if (sideState == SideState.table)
                       SideTableView(
-                        dataSource: frameNotifier.frame != null 
-                          ? PcdDataSource(
-                              frameNotifier.frame!.vertices,
-                              frameNotifier.frame!.colors,
-                              frameNotifier.mask!,
-                            )
-                          : PcdDataSource(Float32List(0), Float32List(0), Float32List(0)),
+                        dataSource: frameNotifier.frame != null
+                            ? PcdDataSource(
+                                frameNotifier.frame!.vertices,
+                                frameNotifier.frame!.colors,
+                                frameNotifier.mask!,
+                              )
+                            : PcdDataSource(
+                                Float32List(0), Float32List(0), Float32List(0)),
                         onClose: () {
                           setState(() {
                             sideState = SideState.none;

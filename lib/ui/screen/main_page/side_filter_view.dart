@@ -165,8 +165,7 @@ class SideFilterView extends StatelessWidget {
                     ),
                   ]),
             ),
-          )
-      ),
+          )),
     );
   }
 }

@@ -17,7 +17,8 @@ class PcdAppearanceNotifier extends ChangeNotifier {
   }
 }
 
-class PcdAppearanceStateProvider extends InheritedNotifier<PcdAppearanceNotifier> {
+class PcdAppearanceStateProvider
+    extends InheritedNotifier<PcdAppearanceNotifier> {
   static PcdAppearanceNotifier of(BuildContext context, {bool listen = false}) {
     if (listen) {
       return context
@@ -25,7 +26,8 @@ class PcdAppearanceStateProvider extends InheritedNotifier<PcdAppearanceNotifier
           .notifier!;
     } else {
       return (context
-              .getElementForInheritedWidgetOfExactType<PcdAppearanceStateProvider>()!
+              .getElementForInheritedWidgetOfExactType<
+                  PcdAppearanceStateProvider>()!
               .widget as PcdAppearanceStateProvider)
           .notifier!;
     }

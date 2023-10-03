@@ -30,12 +30,19 @@ class SideFilterNotifier extends ChangeNotifier {
 class SideFilterStateProvider extends InheritedNotifier<SideFilterNotifier> {
   static SideFilterNotifier of(BuildContext context, {bool listen = false}) {
     if (listen) {
-      return context.dependOnInheritedWidgetOfExactType<SideFilterStateProvider>()!.notifier!;
+      return context
+          .dependOnInheritedWidgetOfExactType<SideFilterStateProvider>()!
+          .notifier!;
     } else {
-      return (context.getElementForInheritedWidgetOfExactType<SideFilterStateProvider>()!.widget as SideFilterStateProvider).notifier!;
+      return (context
+              .getElementForInheritedWidgetOfExactType<
+                  SideFilterStateProvider>()!
+              .widget as SideFilterStateProvider)
+          .notifier!;
     }
   }
 
-  const SideFilterStateProvider({super.key, required super.child, required super.notifier})
+  const SideFilterStateProvider(
+      {super.key, required super.child, required super.notifier})
       : super();
 }

@@ -32,6 +32,7 @@ dependencies:
   flutter_window_close:
     git:
       url: https://github.com/zonble/flutter_window_close
+  async: ^2.11.0
 
 dependency_overrides:
   flutter_gl_platform_interface:

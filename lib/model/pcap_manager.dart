@@ -9,7 +9,6 @@ import 'package:flutter_pcd/common/dprint.dart';
 import 'package:flutter_pcd/domain/pcd_filter.dart';
 import 'package:flutter_pcd/ffi.dart';
 import 'package:flutter_pcd/resource_cleaner/resource_cleaner.dart';
-import 'package:flutter_pcd/ui/screen/main_page/side_filter_notifier.dart';
 import 'package:uuid/uuid.dart';
 import 'package:async/async.dart';
 
