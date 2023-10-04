@@ -116,6 +116,7 @@ class _SideSettingsViewState extends State<SideSettingsView> {
                           SizedBox(
                             width: 72,
                             child: TextField(
+                              controller: _controller,
                               decoration: const InputDecoration(
                                 border: OutlineInputBorder(),
                               ),
