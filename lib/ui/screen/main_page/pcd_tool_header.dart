@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_pcd/ui/pcd_view/component/pcd_slider.dart';
 import 'package:flutter_pcd/ui/pcd_view/component/popup_text_button.dart';
-import 'package:flutter_pcd/ui/screen/main_page.dart';
 import 'package:flutter_pcd/ui/screen/main_page/pcd_frame_notifier.dart';
+import 'package:flutter_pcd/ui/screen/main_page/side_state.dart';
 
 class PcdToolHeader extends StatelessWidget {
   final SideState currentSideState;

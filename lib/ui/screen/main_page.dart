@@ -9,6 +9,7 @@ import 'package:flutter_pcd/ui/screen/main_page/pcd_tool_header.dart';
 import 'package:flutter_pcd/ui/screen/main_page/side_filter_notifier.dart';
 import 'package:flutter_pcd/ui/screen/main_page/side_filter_view.dart';
 import 'package:flutter_pcd/ui/screen/main_page/side_settings_view.dart';
+import 'package:flutter_pcd/ui/screen/main_page/side_state.dart';
 import 'package:flutter_pcd/ui/screen/main_page/side_table_view.dart';
 import 'package:flutter_pcd/ui/theme/color_ext.dart';
 
@@ -143,11 +144,4 @@ class _MainPageInternalState extends State<_MainPageInternal> {
       }),
     );
   }
-}
-
-enum SideState {
-  none,
-  settings,
-  table,
-  filter,
 }
