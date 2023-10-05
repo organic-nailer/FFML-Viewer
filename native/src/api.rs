@@ -1,4 +1,5 @@
 use std::fs::File;
+use std::io::Cursor;
 use std::net::UdpSocket;
 use std::time::Duration;
 use flutter_rust_bridge::StreamSink;
@@ -103,6 +104,88 @@ pub fn capture_hesai(stream: StreamSink<PcdFrame>, address: String) {
             }
         }
     }
+}
+
+pub struct SolidAngleImageConfig {
+    pub azi_start: f32,
+    pub azi_end: f32,
+    pub azi_step: f32,
+    pub alt_start: f32,
+    pub alt_end: f32,
+    pub alt_step: f32,
+}
+
+struct SolidAngleStepper {
+    start: f32,
+    end: f32,
+    step: f32,
+    length: usize,
+}
+
+impl SolidAngleStepper {
+    fn new(start: f32, end: f32, step: f32) -> Self {
+        let factor = (end - start) / step;
+        let calibrated_end = start + step * factor.floor();
+        let length = ((calibrated_end - start) / step).floor() as usize;
+        Self {
+            start,
+            end: calibrated_end,
+            step,
+            length
+        }
+    }
+
+    fn to_index(&self, value: f32) -> Option<usize> {
+        if self.step > 0.0 && (value < self.start || value >= self.end) {
+            return None;
+        }
+        if self.step < 0.0 && (value > self.start || value <= self.end) {
+            return None;
+        }
+        Some(((value - self.start) / self.step) as usize)
+    }
+
+    fn to_label(&self, value: usize) -> f32 {
+        self.start + self.step * value as f32
+    }
+}
+
+// generate bmp image
+pub fn generate_solid_angle_image(other_data: Vec<f32>, mask: Vec<f32>, config: SolidAngleImageConfig) -> Vec<u8> {
+    let azi_stepper = SolidAngleStepper::new(config.azi_start, config.azi_end, config.azi_step);
+    let alt_stepper = SolidAngleStepper::new(config.alt_start, config.alt_end, config.alt_step);
+
+    let mut removed_count = vec![0; azi_stepper.length * alt_stepper.length];
+    let mut all_count = vec![0; azi_stepper.length * alt_stepper.length];
+    for i in 0..other_data.len() / 6 {
+        let azi = other_data[i * 6 + 2];
+        let alt = other_data[i * 6 + 5];
+        let azi_index = azi_stepper.to_index(azi);
+        let alt_index = alt_stepper.to_index(alt);
+        if azi_index.is_none() || alt_index.is_none() {
+            continue;
+        }
+        let azi_index = azi_index.unwrap();
+        let alt_index = alt_index.unwrap();
+        
+        let index = azi_index + alt_index * azi_stepper.length;
+        all_count[index] += 1;
+        if mask[i] < 0.5 {
+            removed_count[index] += 1;
+        }
+    }
+
+    let mut image = image::RgbImage::new(azi_stepper.length as u32, alt_stepper.length as u32);
+    let colormap = colorgrad::turbo();
+    for (x, y, pixel) in image.enumerate_pixels_mut() {
+        let index = x as usize + y as usize * azi_stepper.length;
+        let ratio = removed_count[index] as f64 / all_count[index] as f64;
+        let color = colormap.at(ratio);
+        *pixel = image::Rgb([(color.r * 255.0) as u8, (color.g * 255.0) as u8, (color.b * 255.0) as u8]);
+    }
+    let mut bytes: Vec<u8> = Vec::new();
+    image.write_to(&mut Cursor::new(&mut bytes), image::ImageOutputFormat::Bmp).unwrap();
+    bytes
 }
 
 // #[cfg(test)]

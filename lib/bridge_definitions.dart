@@ -16,6 +16,14 @@ abstract class Native {
   Stream<PcdFrame> captureHesai({required String address, dynamic hint});
 
   FlutterRustBridgeTaskConstMeta get kCaptureHesaiConstMeta;
+
+  Future<Uint8List> generateSolidAngleImage(
+      {required Float32List otherData,
+      required Float32List mask,
+      required SolidAngleImageConfig config,
+      dynamic hint});
+
+  FlutterRustBridgeTaskConstMeta get kGenerateSolidAngleImageConstMeta;
 }
 
 class PcdFrame {
@@ -27,5 +35,23 @@ class PcdFrame {
     required this.vertices,
     required this.colors,
     required this.otherData,
+  });
+}
+
+class SolidAngleImageConfig {
+  final double aziStart;
+  final double aziEnd;
+  final double aziStep;
+  final double altStart;
+  final double altEnd;
+  final double altStep;
+
+  const SolidAngleImageConfig({
+    required this.aziStart,
+    required this.aziEnd,
+    required this.aziStep,
+    required this.altStart,
+    required this.altEnd,
+    required this.altStep,
   });
 }

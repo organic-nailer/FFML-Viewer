@@ -1,0 +1,4 @@
+enum BottomState {
+  none,
+  image
+}

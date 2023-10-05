@@ -58,6 +58,32 @@ fn wire_capture_hesai_impl(port_: MessagePort, address: impl Wire2Api<String> + 
         },
     )
 }
+fn wire_generate_solid_angle_image_impl(
+    port_: MessagePort,
+    other_data: impl Wire2Api<Vec<f32>> + UnwindSafe,
+    mask: impl Wire2Api<Vec<f32>> + UnwindSafe,
+    config: impl Wire2Api<SolidAngleImageConfig> + UnwindSafe,
+) {
+    FLUTTER_RUST_BRIDGE_HANDLER.wrap::<_, _, _, Vec<u8>>(
+        WrapInfo {
+            debug_name: "generate_solid_angle_image",
+            port: Some(port_),
+            mode: FfiCallMode::Normal,
+        },
+        move || {
+            let api_other_data = other_data.wire2api();
+            let api_mask = mask.wire2api();
+            let api_config = config.wire2api();
+            move |task_callback| {
+                Ok(generate_solid_angle_image(
+                    api_other_data,
+                    api_mask,
+                    api_config,
+                ))
+            }
+        },
+    )
+}
 // Section: wrapper structs
 
 // Section: static checks
@@ -78,6 +104,12 @@ where
 {
     fn wire2api(self) -> Option<T> {
         (!self.is_null()).then(|| self.wire2api())
+    }
+}
+
+impl Wire2Api<f32> for f32 {
+    fn wire2api(self) -> f32 {
+        self
     }
 }
 

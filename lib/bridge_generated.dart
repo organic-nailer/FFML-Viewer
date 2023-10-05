@@ -60,6 +60,30 @@ class NativeImpl implements Native {
         argNames: ["address"],
       );
 
+  Future<Uint8List> generateSolidAngleImage(
+      {required Float32List otherData,
+      required Float32List mask,
+      required SolidAngleImageConfig config,
+      dynamic hint}) {
+    var arg0 = _platform.api2wire_float_32_list(otherData);
+    var arg1 = _platform.api2wire_float_32_list(mask);
+    var arg2 = _platform.api2wire_box_autoadd_solid_angle_image_config(config);
+    return _platform.executeNormal(FlutterRustBridgeTask(
+      callFfi: (port_) => _platform.inner
+          .wire_generate_solid_angle_image(port_, arg0, arg1, arg2),
+      parseSuccessData: _wire2api_uint_8_list,
+      constMeta: kGenerateSolidAngleImageConstMeta,
+      argValues: [otherData, mask, config],
+      hint: hint,
+    ));
+  }
+
+  FlutterRustBridgeTaskConstMeta get kGenerateSolidAngleImageConstMeta =>
+      const FlutterRustBridgeTaskConstMeta(
+        debugName: "generate_solid_angle_image",
+        argNames: ["otherData", "mask", "config"],
+      );
+
   void dispose() {
     _platform.dispose();
   }
@@ -83,9 +107,22 @@ class NativeImpl implements Native {
       otherData: _wire2api_float_32_list(arr[2]),
     );
   }
+
+  int _wire2api_u8(dynamic raw) {
+    return raw as int;
+  }
+
+  Uint8List _wire2api_uint_8_list(dynamic raw) {
+    return raw as Uint8List;
+  }
 }
 
 // Section: api2wire
+
+@protected
+double api2wire_f32(double raw) {
+  return raw;
+}
 
 @protected
 int api2wire_u8(int raw) {
@@ -105,6 +142,21 @@ class NativePlatform extends FlutterRustBridgeBase<NativeWire> {
   }
 
   @protected
+  ffi.Pointer<wire_SolidAngleImageConfig>
+      api2wire_box_autoadd_solid_angle_image_config(SolidAngleImageConfig raw) {
+    final ptr = inner.new_box_autoadd_solid_angle_image_config_0();
+    _api_fill_to_wire_solid_angle_image_config(raw, ptr.ref);
+    return ptr;
+  }
+
+  @protected
+  ffi.Pointer<wire_float_32_list> api2wire_float_32_list(Float32List raw) {
+    final ans = inner.new_float_32_list_0(raw.length);
+    ans.ref.ptr.asTypedList(raw.length).setAll(0, raw);
+    return ans;
+  }
+
+  @protected
   ffi.Pointer<wire_uint_8_list> api2wire_uint_8_list(Uint8List raw) {
     final ans = inner.new_uint_8_list_0(raw.length);
     ans.ref.ptr.asTypedList(raw.length).setAll(0, raw);
@@ -113,6 +165,22 @@ class NativePlatform extends FlutterRustBridgeBase<NativeWire> {
 // Section: finalizer
 
 // Section: api_fill_to_wire
+
+  void _api_fill_to_wire_box_autoadd_solid_angle_image_config(
+      SolidAngleImageConfig apiObj,
+      ffi.Pointer<wire_SolidAngleImageConfig> wireObj) {
+    _api_fill_to_wire_solid_angle_image_config(apiObj, wireObj.ref);
+  }
+
+  void _api_fill_to_wire_solid_angle_image_config(
+      SolidAngleImageConfig apiObj, wire_SolidAngleImageConfig wireObj) {
+    wireObj.azi_start = api2wire_f32(apiObj.aziStart);
+    wireObj.azi_end = api2wire_f32(apiObj.aziEnd);
+    wireObj.azi_step = api2wire_f32(apiObj.aziStep);
+    wireObj.alt_start = api2wire_f32(apiObj.altStart);
+    wireObj.alt_end = api2wire_f32(apiObj.altEnd);
+    wireObj.alt_step = api2wire_f32(apiObj.altStep);
+  }
 }
 
 // ignore_for_file: camel_case_types, non_constant_identifier_names, avoid_positional_boolean_parameters, annotate_overrides, constant_identifier_names
@@ -245,6 +313,64 @@ class NativeWire implements FlutterRustBridgeWireBase {
   late final _wire_capture_hesai = _wire_capture_hesaiPtr
       .asFunction<void Function(int, ffi.Pointer<wire_uint_8_list>)>();
 
+  void wire_generate_solid_angle_image(
+    int port_,
+    ffi.Pointer<wire_float_32_list> other_data,
+    ffi.Pointer<wire_float_32_list> mask,
+    ffi.Pointer<wire_SolidAngleImageConfig> config,
+  ) {
+    return _wire_generate_solid_angle_image(
+      port_,
+      other_data,
+      mask,
+      config,
+    );
+  }
+
+  late final _wire_generate_solid_angle_imagePtr = _lookup<
+          ffi.NativeFunction<
+              ffi.Void Function(
+                  ffi.Int64,
+                  ffi.Pointer<wire_float_32_list>,
+                  ffi.Pointer<wire_float_32_list>,
+                  ffi.Pointer<wire_SolidAngleImageConfig>)>>(
+      'wire_generate_solid_angle_image');
+  late final _wire_generate_solid_angle_image =
+      _wire_generate_solid_angle_imagePtr.asFunction<
+          void Function(
+              int,
+              ffi.Pointer<wire_float_32_list>,
+              ffi.Pointer<wire_float_32_list>,
+              ffi.Pointer<wire_SolidAngleImageConfig>)>();
+
+  ffi.Pointer<wire_SolidAngleImageConfig>
+      new_box_autoadd_solid_angle_image_config_0() {
+    return _new_box_autoadd_solid_angle_image_config_0();
+  }
+
+  late final _new_box_autoadd_solid_angle_image_config_0Ptr = _lookup<
+          ffi
+          .NativeFunction<ffi.Pointer<wire_SolidAngleImageConfig> Function()>>(
+      'new_box_autoadd_solid_angle_image_config_0');
+  late final _new_box_autoadd_solid_angle_image_config_0 =
+      _new_box_autoadd_solid_angle_image_config_0Ptr
+          .asFunction<ffi.Pointer<wire_SolidAngleImageConfig> Function()>();
+
+  ffi.Pointer<wire_float_32_list> new_float_32_list_0(
+    int len,
+  ) {
+    return _new_float_32_list_0(
+      len,
+    );
+  }
+
+  late final _new_float_32_list_0Ptr = _lookup<
+          ffi
+          .NativeFunction<ffi.Pointer<wire_float_32_list> Function(ffi.Int32)>>(
+      'new_float_32_list_0');
+  late final _new_float_32_list_0 = _new_float_32_list_0Ptr
+      .asFunction<ffi.Pointer<wire_float_32_list> Function(int)>();
+
   ffi.Pointer<wire_uint_8_list> new_uint_8_list_0(
     int len,
   ) {
@@ -282,6 +408,33 @@ final class wire_uint_8_list extends ffi.Struct {
 
   @ffi.Int32()
   external int len;
+}
+
+final class wire_float_32_list extends ffi.Struct {
+  external ffi.Pointer<ffi.Float> ptr;
+
+  @ffi.Int32()
+  external int len;
+}
+
+final class wire_SolidAngleImageConfig extends ffi.Struct {
+  @ffi.Float()
+  external double azi_start;
+
+  @ffi.Float()
+  external double azi_end;
+
+  @ffi.Float()
+  external double azi_step;
+
+  @ffi.Float()
+  external double alt_start;
+
+  @ffi.Float()
+  external double alt_end;
+
+  @ffi.Float()
+  external double alt_step;
 }
 
 typedef DartPostCObjectFnType = ffi.Pointer<
