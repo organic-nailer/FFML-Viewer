@@ -716,6 +716,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.2.1"
+  rulers:
+    dependency: "direct main"
+    description:
+      name: rulers
+      sha256: f305bddd59b3b3f4e9a314bd12a09d8efbc657e50866502a1216663baa0781b2
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.7"
   shelf:
     dependency: transitive
     description:

@@ -1,13 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_pcd/ui/pcd_view/component/pcd_slider.dart';
 import 'package:flutter_pcd/ui/pcd_view/component/popup_text_button.dart';
+import 'package:flutter_pcd/ui/screen/main_page/bottom_state.dart';
 import 'package:flutter_pcd/ui/screen/main_page/pcd_frame_notifier.dart';
 import 'package:flutter_pcd/ui/screen/main_page/side_state.dart';
 
 class PcdToolHeader extends StatelessWidget {
   final SideState currentSideState;
+  final BottomState currentBottomState;
   final ValueChanged<SideState>? onSideStateChanged;
-  const PcdToolHeader({Key? key, required this.currentSideState, this.onSideStateChanged}) : super(key: key);
+  final ValueChanged<BottomState>? onBottomStateChanged;
+  const PcdToolHeader(
+      {Key? key,
+      required this.currentSideState,
+      required this.currentBottomState,
+      this.onSideStateChanged,
+      this.onBottomStateChanged})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -49,31 +58,13 @@ class PcdToolHeader extends StatelessWidget {
                         },
                       ),
                       TextButton(
-                        child: const Text("Filter"),
-                        onPressed: () {
-                          onSideStateChanged?.call(SideState.filter);
-                        },
-                      ),
-                      TextButton(
                         child: const Text("View"),
                         onPressed: () {
                           onSideStateChanged?.call(SideState.none);
                         },
                       ),
-                      TextButton(
-                        child: const Text("Table"),
-                        onPressed: () {
-                          onSideStateChanged?.call(SideState.table);
-                        },
-                      ),
-                      TextButton(
-                        child: const Text("Settings"),
-                        onPressed: () {
-                          onSideStateChanged?.call(SideState.settings);
-                        },
-                      ),
                       PopupTextButton<String>(
-                        text: "Help",
+                        text: "Help", 
                         offset: const Offset(0, -32),
                         items: const [
                           PopupMenuItem(value: "about", child: Text("About")),

@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_pcd/ffi.dart';
 import 'package:flutter_pcd/model/pcap_reader_model.dart';
 import 'package:flutter_pcd/ui/pcd_view/pcd_view.dart';
 import 'package:flutter_pcd/ui/screen/main_page/bottom_state.dart';
@@ -13,7 +12,9 @@ import 'package:flutter_pcd/ui/screen/main_page/side_filter_view.dart';
 import 'package:flutter_pcd/ui/screen/main_page/side_settings_view.dart';
 import 'package:flutter_pcd/ui/screen/main_page/side_state.dart';
 import 'package:flutter_pcd/ui/screen/main_page/side_table_view.dart';
+import 'package:flutter_pcd/ui/screen/main_page/side_tool_rail.dart';
 import 'package:flutter_pcd/ui/screen/main_page/solid_angle_image_config_notifier.dart';
+import 'package:flutter_pcd/ui/screen/main_page/solid_angle_image_view.dart';
 import 'package:flutter_pcd/ui/theme/color_ext.dart';
 
 class MainPage extends StatefulWidget {
@@ -33,7 +34,9 @@ class MainPageState extends State<MainPage> {
     super.initState();
     _filterNotifier = SideFilterNotifier();
     _solidAngleImageConfigNotifier = SolidAngleImageConfigNotifier();
-    _frameNotifier = PcdFrameNotifier(PcapReaderModelImpl(), _filterNotifier, _solidAngleImageConfigNotifier)..isSolidAngleImageEnabled = true;
+    _frameNotifier = PcdFrameNotifier(
+        PcapReaderModelImpl(), _filterNotifier, _solidAngleImageConfigNotifier)
+      ..isSolidAngleImageEnabled = true;
     _appearanceNotifier = PcdAppearanceNotifier();
   }
 
@@ -46,7 +49,8 @@ class MainPageState extends State<MainPage> {
         child: PcdFrameStateProvider(
             notifier: _frameNotifier,
             child: PcdAppearanceStateProvider(
-                notifier: _appearanceNotifier, child: const _MainPageInternal())),
+                notifier: _appearanceNotifier,
+                child: const _MainPageInternal())),
       ),
     );
   }
@@ -82,10 +86,16 @@ class _MainPageInternalState extends State<_MainPageInternal> {
                   sideState = state;
                 });
               },
+              currentBottomState: bottomState,
+              onBottomStateChanged: (state) {
+                setState(() {
+                  bottomState = state;
+                });
+              },
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
+                padding: const EdgeInsets.only(bottom: 16, left: 16),
                 child: Row(
                   children: [
                     Expanded(
@@ -114,26 +124,12 @@ class _MainPageInternalState extends State<_MainPageInternal> {
                             ),
                           ),
                           if (bottomState == BottomState.image)
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                  top: 16),
-                              child: SizedBox(
-                                height: 192,
-                                width: double.infinity,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: Container(
-                                    color: getSurfaceContainerLowest(context),
-                                    child: frameNotifier.solidAngleImage != null 
-                                      ? Image.memory(
-                                        frameNotifier.solidAngleImage!, 
-                                        fit: BoxFit.contain,
-                                        //filterQuality: FilterQuality.high,
-                                      )
-                                      : const SizedBox(),
-                                  ),
-                                ),
-                              ),
+                            SolidAngleImageView(
+                              onClose: () {
+                                setState(() {
+                                  bottomState = BottomState.none;
+                                });
+                              },
                             )
                         ],
                       ),
@@ -173,7 +169,21 @@ class _MainPageInternalState extends State<_MainPageInternal> {
                             sideState = SideState.none;
                           });
                         },
-                      )
+                      ),
+                    SideToolRail(
+                      sideState: sideState,
+                      bottomState: bottomState,
+                      onSideStateChanged: (value) {
+                        setState(() {
+                          sideState = value;
+                        });
+                      },
+                      onBottomStateChanged: (value) {
+                        setState(() {
+                          bottomState = value;
+                        });
+                      },
+                    )
                   ],
                 ),
               ),
