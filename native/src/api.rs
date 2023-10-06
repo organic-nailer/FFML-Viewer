@@ -176,7 +176,7 @@ pub fn generate_solid_angle_image(other_data: Vec<f32>, mask: Vec<f32>, config: 
     }
 
     let mut image = image::RgbImage::new(azi_stepper.length as u32, alt_stepper.length as u32);
-    let colormap = colorgrad::turbo();
+    let colormap = colorgrad::viridis();
     for (x, y, pixel) in image.enumerate_pixels_mut() {
         let index = x as usize + y as usize * azi_stepper.length;
         let ratio = removed_count[index] as f64 / all_count[index] as f64;

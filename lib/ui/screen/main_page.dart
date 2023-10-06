@@ -181,6 +181,8 @@ class _MainPageInternalState extends State<_MainPageInternal> {
                       onBottomStateChanged: (value) {
                         setState(() {
                           bottomState = value;
+                          frameNotifier.isSolidAngleImageEnabled =
+                              bottomState == BottomState.image;
                         });
                       },
                     )
